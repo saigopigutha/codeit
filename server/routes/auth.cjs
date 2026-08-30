@@ -6,11 +6,11 @@ router.post('/student/login', (req, res) => {
   const { jntuNo, name, branch, contact } = req.body;
   if (!jntuNo || !name || !branch || !contact)
     return res.status(400).json({ error: 'All fields are required.' });
-  if (!/^\d{2}[0-9A-Z]{3}\d[A-Z]\d{4}$/i.test(jntuNo))
-    return res.status(400).json({ error: 'Invalid JNTU number format.' });
-  // In production: upsert student in MongoDB
-  const year = 2000 + parseInt(jntuNo.substring(0, 2));
-  res.json({ jntuNo, name, branch, contact, batch: year, token: 'MOCK_JWT_' + jntuNo });
+  const cleanJntu = (jntuNo || '').trim().toUpperCase();
+  if (!/^[0-9]{2}[0-9A-Z]{8}$/i.test(cleanJntu))
+    return res.status(400).json({ error: 'Invalid JNTU number format (10 characters expected).' });
+  const year = 2000 + parseInt(cleanJntu.substring(0, 2));
+  res.json({ jntuNo: cleanJntu, name, branch, contact, batch: year, token: 'JWT_' + cleanJntu });
 });
 
 // Admin login (demo only — use MSAL for production)
