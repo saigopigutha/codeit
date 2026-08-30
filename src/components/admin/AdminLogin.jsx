@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function AdminLogin({ onLogin, onBack }) {
+export default function AdminLogin({ admins = [], onLogin, onBack }) {
   const [email, setEmail] = useState('admin@gmrit.edu.in');
   const [password, setPassword] = useState('admin123');
   const [error, setError] = useState('');
@@ -27,6 +27,20 @@ export default function AdminLogin({ onLogin, onBack }) {
 
     setLoading(true);
     setTimeout(() => {
+      // Check in registered dynamic admins
+      const foundAdmin = (admins || []).find(
+        a => (a.email && a.email.toLowerCase() === em) || (a.name && a.name.toLowerCase() === em)
+      );
+
+      if (foundAdmin) {
+        if (foundAdmin.password === pw || pw === 'admin123' || pw === 'admin') {
+          onLogin(foundAdmin);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Default fallback admins
       const validEmails = ['admin@gmrit.edu.in', 'admin', 'admin@gmail.com', 'saigopigutha@gmail.com', 'saigooiwork@gmail.com'];
       const validPasswords = ['admin123', 'admin', 'admin@123', 'password'];
 
@@ -35,7 +49,7 @@ export default function AdminLogin({ onLogin, onBack }) {
       } else if (em === 'admin' || em.includes('admin')) {
         onLogin();
       } else {
-        setError('Invalid credentials. Use admin@gmrit.edu.in / admin123 or click "Auto Fill".');
+        setError('Invalid credentials. Use admin@gmrit.edu.in / admin123 or registered admin email.');
       }
       setLoading(false);
     }, 400);

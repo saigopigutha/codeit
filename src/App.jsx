@@ -183,6 +183,29 @@ Output Format:
   }
 ];
 
+const DEFAULT_ADMINS = [
+  {
+    id: 1,
+    name: 'Chief Exam Controller',
+    email: 'admin@gmrit.edu.in',
+    password: 'admin123',
+    role: 'Super Admin',
+    department: 'GMRIT Examination Cell',
+    status: 'Active',
+    addedAt: '30 Aug 2026'
+  },
+  {
+    id: 2,
+    name: 'Sai Gopi Gutha',
+    email: 'saigopigutha@gmail.com',
+    password: 'admin',
+    role: 'Super Admin',
+    department: 'CSE Department',
+    status: 'Active',
+    addedAt: '30 Aug 2026'
+  }
+];
+
 export default function App() {
   const [page, setPage] = useState(() => localStorage.getItem('codeit_page') || 'login');
   const [student, setStudent] = useState(() => {
@@ -193,6 +216,15 @@ export default function App() {
   });
   const [testResult, setTestResult] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Platform Admins state
+  const [admins, setAdmins] = useState(() => {
+    try {
+      const saved = localStorage.getItem('codeit_admins');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return DEFAULT_ADMINS;
+  });
 
   // Submissions state
   const [submissions, setSubmissions] = useState(() => {
@@ -214,11 +246,12 @@ export default function App() {
           ...c,
           token: c.token || (c.password ? c.password.toUpperCase() + '-TOKEN' : `CONTEST-${c.id}-TOKEN`),
           accessTokens: c.accessTokens || [],
+          admins: c.admins || ['admin@gmrit.edu.in'],
           students: savedSubs.filter(s => s.contestId === c.id).length
         }));
       }
     } catch(e) {}
-    return DEFAULT_CONTESTS;
+    return DEFAULT_CONTESTS.map(c => ({ ...c, admins: c.admins || ['admin@gmrit.edu.in'] }));
   });
 
   // Save state changes to localStorage
@@ -233,8 +266,9 @@ export default function App() {
 
       localStorage.setItem('codeit_contests', JSON.stringify(contests));
       localStorage.setItem('codeit_submissions', JSON.stringify(submissions));
+      localStorage.setItem('codeit_admins', JSON.stringify(admins));
     } catch(e) {}
-  }, [page, student, selectedContest, contests, submissions]);
+  }, [page, student, selectedContest, contests, submissions, admins]);
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -363,8 +397,8 @@ export default function App() {
       {page === 'contests' && <ContestList contests={contests} student={student} onEnterWithToken={handleEnterContestWithToken} onLogout={handleLogout} />}
       {page === 'test' && <TestInterface student={student} contest={selectedContest} onFinish={handleTestFinish} />}
       {page === 'results' && <ResultsPage student={student} contest={selectedContest} result={testResult} onBack={() => nav('contests')} />}
-      {page === 'adminLogin' && <AdminLogin onLogin={() => { showToast('Welcome to Admin Portal', 'success'); nav('adminDash'); }} onBack={() => nav('login')} />}
-      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} showToast={showToast} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
+      {page === 'adminLogin' && <AdminLogin admins={admins} onLogin={() => { showToast('Welcome to Admin Portal', 'success'); nav('adminDash'); }} onBack={() => nav('login')} />}
+      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} admins={admins} setAdmins={setAdmins} showToast={showToast} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
