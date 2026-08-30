@@ -1,0 +1,118 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "title": "Valid Parentheses",
+      "description": "Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid.\n\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.\n3. Every close bracket has a corresponding open bracket of the same type.",
+      "difficulty": "Easy",
+      "inputFormat": "A single line containing the string `s` of brackets.",
+      "outputFormat": "Output `true` if the brackets are valid, or `false` otherwise.",
+      "sampleInput": "()[]{}",
+      "sampleOutput": "true",
+      "testCases": [
+        { "input": "()", "expectedOutput": "true", "isHidden": false },
+        { "input": "()[]{}", "expectedOutput": "true", "isHidden": false },
+        { "input": "(]", "expectedOutput": "false", "isHidden": false },
+        { "input": "([)]", "expectedOutput": "false", "isHidden": true },
+        { "input": "{[]}", "expectedOutput": "true", "isHidden": true }
+      ]
+    },
+    {
+      "id": "q2",
+      "title": "Prime Numbers in Range",
+      "description": "Write a program that takes two integers `L` and `R` and finds the count of prime numbers between `L` and `R` (both inclusive). A prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself.",
+      "difficulty": "Medium",
+      "inputFormat": "A single line containing two space-separated integers `L` and `R`.",
+      "outputFormat": "Output a single integer representing the count of prime numbers.",
+      "sampleInput": "10 20",
+      "sampleOutput": "4",
+      "testCases": [
+        { "input": "1 10", "expectedOutput": "4", "isHidden": false },
+        { "input": "10 20", "expectedOutput": "4", "isHidden": false },
+        { "input": "20 50", "expectedOutput": "7", "isHidden": false },
+        { "input": "2 2", "expectedOutput": "1", "isHidden": true },
+        { "input": "1 100", "expectedOutput": "25", "isHidden": true }
+      ]
+    },
+    {
+      "id": "q3",
+      "title": "Find the Missing Number",
+      "description": "Given an array `nums` containing `n` distinct numbers in the range `[0, n]`, return the only number in the range that is missing from the array.",
+      "difficulty": "Easy",
+      "inputFormat": "First line contains an integer `n`. The second line contains `n` space-separated integers representing the array elements.",
+      "outputFormat": "A single integer representing the missing number.",
+      "sampleInput": "3\n3 0 1",
+      "sampleOutput": "2",
+      "testCases": [
+        { "input": "3\n3 0 1", "expectedOutput": "2", "isHidden": false },
+        { "input": "9\n9 6 4 2 3 5 7 0 1", "expectedOutput": "8", "isHidden": false },
+        { "input": "1\n0", "expectedOutput": "1", "isHidden": true },
+        { "input": "2\n0 1", "expectedOutput": "2", "isHidden": true }
+      ]
+    }
+  ],
+  "students": [
+    {
+      "jntuNo": "24341A0574",
+      "name": "Sai Gopi",
+      "branch": "CSE",
+      "section": "B",
+      "status": "active",
+      "violations": 0,
+      "refreshLimit": 3,
+      "problemsSolved": 2,
+      "timeTakenSeconds": 1420,
+      "startTime": 1781520000000,
+      "submitted": true,
+      "submissions": [
+        {
+          "questionId": "q1",
+          "language": "python",
+          "code": "def isValid(s):\n    stack = []\n    mapping = {')': '(', '}': '{', ']': '['}\n    for char in s:\n        if char in mapping:\n            top = stack.pop() if stack else '#'\n            if mapping[char] != top:\n                return False\n        else:\n            stack.append(char)\n    return not stack\n\nimport sys\ns = sys.stdin.read().strip()\nprint('true' if isValid(s) else 'false')",
+          "status": "Passed",
+          "passedCount": 5,
+          "totalCount": 5,
+          "timestamp": 1781520600000
+        },
+        {
+          "questionId": "q3",
+          "language": "python",
+          "code": "import sys\nlines = sys.stdin.read().strip().split('\\n')\nn = int(lines[0])\nnums = list(map(int, lines[1].split()))\nexpected_sum = n * (n + 1) // 2\nactual_sum = sum(nums)\nprint(expected_sum - actual_sum)",
+          "status": "Passed",
+          "passedCount": 4,
+          "totalCount": 4,
+          "timestamp": 1781521400000
+        }
+      ]
+    },
+    {
+      "jntuNo": "24341A0512",
+      "name": "Anoop Kumar",
+      "branch": "CSE",
+      "section": "A",
+      "status": "active",
+      "violations": 1,
+      "refreshLimit": 3,
+      "problemsSolved": 1,
+      "timeTakenSeconds": 920,
+      "startTime": 1781520200000,
+      "submitted": false,
+      "submissions": [
+        {
+          "questionId": "q1",
+          "language": "javascript",
+          "code": "const fs = require('fs');\nconst s = fs.readFileSync(0, 'utf-8').trim();\n// incomplete logic",
+          "status": "Failed",
+          "passedCount": 2,
+          "totalCount": 5,
+          "timestamp": 1781520800000
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "testDurationMinutes": 60,
+    "globalRefreshLimit": 3,
+    "testIsActive": true
+  }
+}

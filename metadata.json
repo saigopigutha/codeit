@@ -1,0 +1,6 @@
+{
+  "name": "Local Coding Assessment Platform",
+  "description": "A HackerEarth-style local coding exam platform with dual-role authentication, secure anti-cheat browser features, automated grading, live leaderboard tracking, and CSV reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
