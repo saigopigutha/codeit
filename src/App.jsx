@@ -199,8 +199,17 @@ const DEFAULT_ADMINS = [
   }
 ];
 
+const VALID_PAGES = ['login', 'contests', 'test', 'results', 'adminLogin', 'adminDash'];
+
 export default function App() {
-  const [page, setPage] = useState(() => localStorage.getItem('codeit_page') || 'login');
+  const [page, setPage] = useState(() => {
+    try {
+      const savedPage = localStorage.getItem('codeit_page');
+      return VALID_PAGES.includes(savedPage) ? savedPage : 'login';
+    } catch (e) {
+      return 'login';
+    }
+  });
   const [student, setStudent] = useState(() => {
     try { return JSON.parse(localStorage.getItem('codeit_student')); } catch(e) { return null; }
   });
@@ -392,12 +401,63 @@ export default function App() {
 
   return (
     <div>
-      {page === 'login' && <StudentLogin onLogin={s => { showToast(`Welcome, ${s.name}!`, 'success'); nav('contests', { student: s }); }} onAdmin={() => nav('adminLogin')} />}
-      {page === 'contests' && <ContestList contests={contests} student={student} onEnterWithToken={handleEnterContestWithToken} onLogout={handleLogout} />}
-      {page === 'test' && <TestInterface student={student} contest={selectedContest} onFinish={handleTestFinish} />}
-      {page === 'results' && <ResultsPage student={student} contest={selectedContest} result={testResult} onBack={() => nav('contests')} />}
-      {page === 'adminLogin' && <AdminLogin admins={admins} onLogin={() => { showToast('Welcome to Admin Portal', 'success'); nav('adminDash'); }} onBack={() => nav('login')} />}
-      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} admins={admins} setAdmins={setAdmins} showToast={showToast} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
+      {(page === 'login' || (!VALID_PAGES.includes(page))) && (
+        <StudentLogin
+          onLogin={s => {
+            showToast(`Welcome, ${s.name}!`, 'success');
+            nav('contests', { student: s });
+          }}
+          onAdmin={() => nav('adminLogin')}
+        />
+      )}
+      {page === 'contests' && (
+        <ContestList
+          contests={contests}
+          student={student || { name: 'Student', jntuNo: '24341A0501', branch: 'CSE' }}
+          onEnterWithToken={handleEnterContestWithToken}
+          onLogout={handleLogout}
+        />
+      )}
+      {page === 'test' && (
+        <TestInterface
+          student={student || { name: 'Student', jntuNo: '24341A0501', branch: 'CSE' }}
+          contest={selectedContest || contests[0]}
+          onFinish={handleTestFinish}
+        />
+      )}
+      {page === 'results' && (
+        <ResultsPage
+          student={student || { name: 'Student', jntuNo: '24341A0501', branch: 'CSE' }}
+          contest={selectedContest || contests[0]}
+          result={testResult || { score: 45, total: 50, timeTaken: 1800, warnings: 0, refreshCount: 0 }}
+          onBack={() => nav('contests')}
+        />
+      )}
+      {page === 'adminLogin' && (
+        <AdminLogin
+          admins={admins}
+          onLogin={() => {
+            showToast('Welcome to Admin Portal', 'success');
+            nav('adminDash');
+          }}
+          onBack={() => nav('login')}
+        />
+      )}
+      {page === 'adminDash' && (
+        <AdminDashboard
+          contests={contests}
+          setContests={setContests}
+          submissions={submissions}
+          setSubmissions={setSubmissions}
+          admins={admins}
+          setAdmins={setAdmins}
+          showToast={showToast}
+          onLogout={() => {
+            showToast('Admin logged out', 'info');
+            nav('login');
+          }}
+        />
+      )}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
