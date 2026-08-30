@@ -17,7 +17,7 @@ const DEFAULT_CONTESTS = [
     type: 'Coding',
     status: 'Open',
     password: 'iste2024',
-    students: 47,
+    students: 0,
     questions: [
       {
         id: 1,
@@ -113,9 +113,9 @@ Constraints:
     duration: 120,
     marks: 150,
     type: 'Coding',
-    status: 'Closed',
+    status: 'Upcoming',
     password: 'web2024',
-    students: 83,
+    students: 0,
     questions: []
   },
   {
@@ -127,7 +127,7 @@ Constraints:
     type: 'Coding',
     status: 'Open',
     password: 'python2024',
-    students: 31,
+    students: 0,
     questions: [
       {
         id: 1,
@@ -179,11 +179,28 @@ export default function App() {
   const [testResult, setTestResult] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Submissions state
+  const [submissions, setSubmissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('codeit_submissions');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return [];
+  });
+
   // Persistent contest state
   const [contests, setContests] = useState(() => {
     try {
       const saved = localStorage.getItem('codeit_contests');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Sync student count with real submissions
+        const savedSubs = JSON.parse(localStorage.getItem('codeit_submissions') || '[]');
+        return parsed.map(c => ({
+          ...c,
+          students: savedSubs.filter(s => s.contestId === c.id).length
+        }));
+      }
     } catch(e) {}
     return DEFAULT_CONTESTS;
   });
@@ -199,8 +216,9 @@ export default function App() {
       else localStorage.removeItem('codeit_selected_contest');
 
       localStorage.setItem('codeit_contests', JSON.stringify(contests));
+      localStorage.setItem('codeit_submissions', JSON.stringify(submissions));
     } catch(e) {}
-  }, [page, student, selectedContest, contests]);
+  }, [page, student, selectedContest, contests, submissions]);
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -224,14 +242,69 @@ export default function App() {
     showToast('Logged out successfully', 'success');
   };
 
+  const handleTestFinish = (result) => {
+    const now = new Date();
+    const formattedTime = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ', ' +
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const newSub = {
+      id: Date.now(),
+      jntuNo: student?.jntuNo || 'N/A',
+      name: student?.name || 'Anonymous',
+      branch: student?.branch || 'CSE',
+      contestId: selectedContest?.id,
+      contest: selectedContest?.name || 'Contest',
+      score: result.score,
+      total: result.total,
+      percentage: result.total > 0 ? Math.round((result.score / result.total) * 100) : 0,
+      timeTaken: result.timeTaken,
+      time: formattedTime,
+      answers: result.answers,
+      code: result.code,
+      codingScores: result.codingScores
+    };
+
+    setSubmissions(prev => [newSub, ...prev]);
+
+    // Update real submission count on contest
+    setContests(prev => prev.map(c => {
+      if (c.id === selectedContest?.id) {
+        return { ...c, students: (c.students || 0) + 1 };
+      }
+      return c;
+    }));
+
+    // Post to backend API if available
+    fetch('/api/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jntuNo: student?.jntuNo,
+        studentName: student?.name,
+        branch: student?.branch,
+        contestId: selectedContest?.id,
+        contestName: selectedContest?.name,
+        score: result.score,
+        totalMarks: result.total,
+        mcqCorrect: result.mcqCorrect,
+        timeTaken: result.timeTaken,
+        answers: result.answers,
+        code: result.code
+      })
+    }).catch(() => {});
+
+    showToast('Test submitted successfully!', 'success');
+    nav('results', { result });
+  };
+
   return (
     <div>
       {page === 'login' && <StudentLogin onLogin={s => { showToast(`Welcome, ${s.name}!`, 'success'); nav('contests', { student: s }); }} onAdmin={() => nav('adminLogin')} />}
       {page === 'contests' && <ContestList contests={contests} student={student} onEnter={c => nav('test', { contest: c })} onLogout={handleLogout} />}
-      {page === 'test' && <TestInterface student={student} contest={selectedContest} onFinish={r => { showToast('Test submitted successfully!', 'success'); nav('results', { result: r }); }} />}
+      {page === 'test' && <TestInterface student={student} contest={selectedContest} onFinish={handleTestFinish} />}
       {page === 'results' && <ResultsPage student={student} contest={selectedContest} result={testResult} onBack={() => nav('contests')} />}
       {page === 'adminLogin' && <AdminLogin onLogin={() => { showToast('Welcome to Admin Portal', 'success'); nav('adminDash'); }} onBack={() => nav('login')} />}
-      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
+      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

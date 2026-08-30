@@ -6,13 +6,6 @@ function Badge({ text }) {
   return <span style={{ background: `${c}18`, color: c, border: `1px solid ${c}35`, borderRadius: '20px', padding: '0.2rem 0.75rem', fontSize: '0.72rem', fontWeight: 700 }}>{text}</span>;
 }
 
-const MOCK_STUDENTS = [
-  { jntuNo: '24341A0574', name: 'Sai Gopi Gutha', branch: 'CSE', score: 87, contest: 'ISTE Coding Challenge – Round 1', time: '30 Aug, 3:01 PM' },
-  { jntuNo: '24341A0510', name: 'Arjun Reddy', branch: 'ECE', score: 72, contest: 'ISTE Coding Challenge – Round 1', time: '30 Aug, 3:15 PM' },
-  { jntuNo: '23341A0322', name: 'Priya Sharma', branch: 'IT', score: 94, contest: 'Python Basics Assessment', time: '30 Aug, 3:22 PM' },
-  { jntuNo: '22341A05B7', name: 'Kiran Kumar', branch: 'ME', score: 55, contest: 'ISTE Coding Challenge – Round 1', time: '30 Aug, 3:30 PM' },
-];
-
 const emptyMCQ = () => ({ id: Date.now(), type: 'mcq', text: '', options: ['', '', '', ''], correct: 0, marks: 10 });
 const emptyCode = () => ({
   id: Date.now(),
@@ -26,7 +19,7 @@ const emptyCode = () => ({
   ]
 });
 
-export default function AdminDashboard({ contests, setContests, onLogout }) {
+export default function AdminDashboard({ contests = [], setContests, submissions = [], setSubmissions, onLogout }) {
   const [tab, setTab] = useState('overview');
   // Create contest modal
   const [showCreate, setShowCreate] = useState(false);
@@ -36,9 +29,9 @@ export default function AdminDashboard({ contests, setContests, onLogout }) {
   const [addingQ, setAddingQ] = useState(null); // null | MCQ-draft | code-draft
   const [addType, setAddType] = useState('mcq');
 
-  const totalStudents = 214;
+  const totalStudents = new Set(submissions.map(s => s.jntuNo)).size;
   const activeContests = contests.filter(c => c.status === 'Open').length;
-  const totalSubs = contests.reduce((s, c) => s + (c.students || 0), 0);
+  const totalSubs = submissions.length;
 
   /* ── Create contest ── */
   const handleCreate = e => {
@@ -487,27 +480,44 @@ export default function AdminDashboard({ contests, setContests, onLogout }) {
           {/* ── STUDENTS ── */}
           {tab === 'students' && (
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['JNTU No.', 'Name', 'Branch', 'Score', 'Contest', 'Time'].map(h => (
-                      <th key={h} style={{ padding: '1rem 1.25rem', textAlign: 'left', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_STUDENTS.map((s, i) => (
-                    <tr key={s.jntuNo} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                      <td style={{ padding: '1rem 1.25rem', fontFamily: 'monospace', color: '#818cf8', fontSize: '0.875rem' }}>{s.jntuNo}</td>
-                      <td style={{ padding: '1rem 1.25rem', fontWeight: 600, fontSize: '0.9rem' }}>{s.name}</td>
-                      <td style={{ padding: '1rem 1.25rem', color: '#94a3b8', fontSize: '0.875rem' }}>{s.branch}</td>
-                      <td style={{ padding: '1rem 1.25rem' }}><span style={{ color: s.score >= 75 ? '#86efac' : s.score >= 50 ? '#fcd34d' : '#f87171', fontWeight: 700 }}>{s.score}%</span></td>
-                      <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.contest}</td>
-                      <td style={{ padding: '1rem 1.25rem', color: '#475569', fontSize: '0.8rem' }}>{s.time}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {submissions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: '#64748b' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📋</div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No Submissions Yet</h3>
+                  <p style={{ fontSize: '0.85rem', color: '#475569', maxWidth: '400px', margin: '0 auto' }}>
+                    Student submissions, scores, and test details will appear here automatically in real time as students complete exams.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        {['JNTU No.', 'Name', 'Branch', 'Score', 'Percentage', 'Contest', 'Submitted At'].map(h => (
+                          <th key={h} style={{ padding: '1rem 1.25rem', textAlign: 'left', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissions.map((s, i) => (
+                        <tr key={s.id || `${s.jntuNo}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '1rem 1.25rem', fontFamily: 'monospace', color: '#818cf8', fontSize: '0.875rem' }}>{s.jntuNo}</td>
+                          <td style={{ padding: '1rem 1.25rem', fontWeight: 600, fontSize: '0.9rem' }}>{s.name}</td>
+                          <td style={{ padding: '1rem 1.25rem', color: '#94a3b8', fontSize: '0.875rem' }}>{s.branch}</td>
+                          <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#f1f5f9' }}>{s.score} / {s.total}</td>
+                          <td style={{ padding: '1rem 1.25rem' }}>
+                            <span style={{ color: (s.percentage || 0) >= 75 ? '#86efac' : (s.percentage || 0) >= 50 ? '#fcd34d' : '#f87171', fontWeight: 700 }}>
+                              {s.percentage !== undefined ? `${s.percentage}%` : `${Math.round((s.score / s.total) * 100)}%`}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.contest}</td>
+                          <td style={{ padding: '1rem 1.25rem', color: '#475569', fontSize: '0.8rem' }}>{s.time}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
