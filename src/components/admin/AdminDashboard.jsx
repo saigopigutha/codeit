@@ -620,350 +620,50 @@ export default function AdminDashboard({
                         <th className="pb-3 font-semibold">Questions</th>
                         <th className="pb-3 font-semibold">Max Marks</th>
                         <th className="pb-3 font-semibold">Students</th>
-                        <th className="pb-3 font-semibold">Status</th>
                         <th className="pb-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {contests.map(c => {
-                        const subsCount = submissions.filter(s => s.contestId === c.id || s.contest === c.name).length;
-                        return (
-                          <tr key={c.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
-                            <td className="py-3.5 font-bold text-white">{c.name}</td>
-                            <td className="py-3.5 text-gray-400 font-mono text-xs">{c.type}</td>
-                            <td className="py-3.5 text-gray-300 font-mono text-xs">{c.questions?.length || 0}</td>
-                            <td className="py-3.5 text-orange-400 font-mono font-bold text-xs">{c.marks}</td>
-                            <td className="py-3.5 text-gray-300 font-mono text-xs">{subsCount || c.students || 0}</td>
-                            <td className="py-3.5">
-                              <Badge text={c.status} />
-                            </td>
-                            <td className="py-3.5 text-right">
-                              <div className="inline-flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedContestId(c.id);
-                                    setTab('contests');
-                                  }}
-                                  className="text-xs text-gray-400 hover:text-white px-2.5 py-1 rounded border border-[#2a2a2a] hover:border-gray-600 transition-colors cursor-pointer"
-                                >
-                                  Manage
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedContestId(c.id);
-                                    setTab('analytics');
-                                  }}
-                                  className="text-xs text-orange-400 hover:text-orange-300 px-2.5 py-1 rounded bg-orange-500/10 border border-orange-500/20 transition-colors cursor-pointer"
-                                >
-                                  Analytics
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ════════════════ TAB 2: CONTESTS ════════════════ */}
-          {tab === 'contests' && (
-            <div className="space-y-4">
-              {contests.map(c => {
-                const isOpen = c.status === 'Open';
-                const subsCount = submissions.filter(s => s.contestId === c.id || s.contest === c.name).length;
-
-                return (
-                  <div
-                    key={c.id}
-                    className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 transition-all ${
-                      isOpen ? 'border-l-2 border-l-orange-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between flex-wrap gap-4 mb-3">
-                      <div>
-                        <div className="flex items-center gap-3 mb-1.5">
-                          <Badge text={c.status} />
-                          <h3 className="text-base font-bold text-white">{c.name}</h3>
-                        </div>
-                        <p className="text-xs font-mono text-gray-400">
-                          {c.type} • {c.questions?.length || 0} Questions • {c.marks} Marks • {c.duration} min
-                        </p>
-                      </div>
-
-                      <div className="text-xs font-mono text-gray-400">
-                        <span className="text-green-400 font-bold">{subsCount || c.students || 0}</span> students active
-                      </div>
-                    </div>
-
-                    <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-2.5 mb-4 text-xs font-mono flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 uppercase">Token:</span>
-                        <code className="text-orange-400 font-bold">{c.token || c.password}</code>
-                      </div>
-                      <button
-                        onClick={() => copyToClipboard(c.token || c.password, 'Token')}
-                        className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                      >
-                        📋 Copy
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a] flex-wrap gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => {
-                            setSelectedContestId(c.id);
-                            setTab('analytics');
-                          }}
-                          className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          📊 Analytics
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedContestId(c.id);
-                            setTab('tokens');
-                          }}
-                          className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          🔑 Tokens
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAssignContestId(c.id);
-                            setTab('people');
-                          }}
-                          className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          👥 Admins
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedContestId(c.id);
-                            setTab('questions');
-                          }}
-                          className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          ❓ Questions
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleStatus(c.id)}
-                          className="border border-[#2a2a2a] hover:border-gray-600 text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer"
-                        >
-                          Toggle Status
-                        </button>
-                        <button
-                          onClick={() => handleDeleteContest(c.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ════════════════ TAB 3: ANALYTICS ════════════════ */}
-          {tab === 'analytics' && (
-            <div className="space-y-6">
-              {/* Top Contest Selector Dropdown */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
-                    Select Contest:
-                  </label>
-                  <select
-                    value={selectedContestId}
-                    onChange={e => setSelectedContestId(Number(e.target.value))}
-                    className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
-                  >
-                    {contests.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.status})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <span className="text-xs font-mono text-gray-400">
-                  {currentContestSubs.length} Submissions Logged
-                </span>
-              </div>
-
-              {/* 5 KPI Metric Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🎓 Completed</div>
-                  <div className="text-xl font-bold font-mono text-white">{currentContestSubs.length}</div>
-                </div>
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">📊 Avg Score</div>
-                  <div className="text-xl font-bold font-mono text-orange-400">
-                    {avgScore} <span className="text-xs text-gray-500">/ {contestTotalMarks}</span>
-                  </div>
-                </div>
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🏆 Top Score</div>
-                  <div className="text-xl font-bold font-mono text-green-400 truncate">
-                    {topScore} <span className="text-xs text-gray-400 font-sans">({topStudent?.name ? topStudent.name.split(' ')[0] : '—'})</span>
-                  </div>
-                </div>
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🎯 Pass Rate</div>
-                  <div className={`text-xl font-bold font-mono ${passRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                    {passRate}%
-                  </div>
-                </div>
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">⏱️ Avg Time</div>
-                  <div className="text-xl font-bold font-mono text-white">{avgTimeStr}</div>
-                </div>
-              </div>
-
-              {/* Question Success Rate Table */}
-              {questionsAnalytics.length > 0 && (
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
-                  <h3 className="text-sm font-bold text-white mb-3">Question Success Rate</h3>
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
-                        <th className="pb-2.5 font-semibold w-10">#</th>
-                        <th className="pb-2.5 font-semibold">Question Title</th>
-                        <th className="pb-2.5 font-semibold w-24">Type</th>
-                        <th className="pb-2.5 font-semibold w-20">Marks</th>
-                        <th className="pb-2.5 font-semibold w-72">Success Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {questionsAnalytics.map(q => {
-                        const barColor = q.rate >= 60 ? 'bg-green-500' : q.rate >= 40 ? 'bg-yellow-500' : 'bg-red-500';
-                        return (
-                          <tr key={q.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
-                            <td className="py-2.5 font-mono text-gray-400">{q.idx}</td>
-                            <td className="py-2.5 font-semibold text-white truncate max-w-xs">{q.title || q.text}</td>
-                            <td className="py-2.5 font-mono uppercase text-gray-400">{q.type}</td>
-                            <td className="py-2.5 font-mono text-orange-400 font-bold">{q.marks}</td>
-                            <td className="py-2.5">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-1.5 rounded-full bg-[#2a2a2a] overflow-hidden">
-                                  <div className={`h-full ${barColor}`} style={{ width: `${q.rate}%` }} />
-                                </div>
-                                <span className="font-mono text-gray-300 w-28 text-right">
-                                  {q.rate}% ({q.solvedCount}/{currentContestSubs.length})
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Student Leaderboard Table */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
-                <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-                  <h3 className="text-sm font-bold text-white">Student Leaderboard</h3>
-
-                  {/* Filters */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <input
-                      type="text"
-                      value={analyticsSearch}
-                      onChange={e => setAnalyticsSearch(e.target.value)}
-                      placeholder="Search JNTU No. or Name..."
-                      className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs font-mono outline-none w-56"
-                    />
-
-                    <select
-                      value={analyticsBranch}
-                      onChange={e => setAnalyticsBranch(e.target.value)}
-                      className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer"
-                    >
-                      {['All', 'CSE', 'IT', 'ECE', 'AI&DS', 'ME', 'EEE'].map(b => (
-                        <option key={b} value={b}>{b === 'All' ? 'All Branches' : b}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
-                        <th className="pb-3 font-semibold">Rank</th>
-                        <th className="pb-3 font-semibold">JNTU No.</th>
-                        <th className="pb-3 font-semibold">Name</th>
-                        <th className="pb-3 font-semibold">Branch</th>
-                        <th className="pb-3 font-semibold">Score</th>
-                        <th className="pb-3 font-semibold">Solved</th>
-                        <th className="pb-3 font-semibold">Time</th>
-                        <th className="pb-3 font-semibold">Flags</th>
-                        <th className="pb-3 font-semibold text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedRankedSubs.length === 0 ? (
+                      {contests.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="text-center py-8 text-gray-500 font-mono">
-                            No submissions found.
+                          <td colSpan={7} className="py-8 text-center text-gray-500 font-mono text-xs">
+                            No contests created yet. Click "+ New Contest" in the Contests tab to create your first examination.
                           </td>
                         </tr>
                       ) : (
-                        sortedRankedSubs.map((s, idx) => {
-                          const rank = idx + 1;
-                          const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-                          const solvedInfo = getSolvedCount(s, activeContest);
-                          const flagsCount = (s.warnings || 0) + (s.refreshes || 0);
-                          const isAuto = (s.warnings || 0) >= 3 || s.auto;
-                          const timeStr = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
-
+                        contests.map(c => {
+                          const subsCount = submissions.filter(s => s.contestId === c.id || s.contest === c.name).length;
                           return (
-                            <tr key={s.id || idx} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
-                              <td className="py-3 font-bold font-mono text-sm">{rankIcon}</td>
-                              <td className="py-3 font-mono text-orange-400 font-semibold">{s.jntuNo}</td>
-                              <td className="py-3 font-bold text-white">{s.name}</td>
-                              <td className="py-3 text-gray-400">{s.branch}</td>
-                              <td className="py-3 font-mono font-bold text-white">{s.score}/{s.total}</td>
-                              <td className="py-3 font-mono">
-                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                                  solvedInfo.solved === solvedInfo.total && solvedInfo.total > 0
-                                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                    : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                                }`}>
-                                  {solvedInfo.solved}/{solvedInfo.total}
-                                </span>
+                            <tr key={c.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
+                              <td className="py-3.5 font-bold text-white">{c.name}</td>
+                              <td className="py-3.5 text-gray-400 font-mono text-xs">{c.type}</td>
+                              <td className="py-3.5 text-gray-300 font-mono text-xs">{c.questions?.length || 0}</td>
+                              <td className="py-3.5 text-orange-400 font-mono font-bold text-xs">{c.marks}</td>
+                              <td className="py-3.5 text-gray-300 font-mono text-xs">{subsCount || c.students || 0}</td>
+                              <td className="py-3.5">
+                                <Badge text={c.status} />
                               </td>
-                              <td className="py-3 font-mono text-gray-300">{timeStr}</td>
-                              <td className="py-3 font-mono">
-                                {isAuto ? (
-                                  <span className="text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                    3 🚨 AUTO
-                                  </span>
-                                ) : flagsCount > 0 ? (
-                                  <span className="text-yellow-400">{flagsCount} ⚠️</span>
-                                ) : (
-                                  <span className="text-green-400">0 ✅</span>
-                                )}
-                              </td>
-                              <td className="py-3 text-right">
-                                <button
-                                  onClick={() => setSelectedStudentDrawer(s)}
-                                  className="text-orange-400 hover:text-orange-300 font-semibold text-xs cursor-pointer"
-                                >
-                                  View Log 👁️
-                                </button>
+                              <td className="py-3.5 text-right">
+                                <div className="inline-flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedContestId(c.id);
+                                      setTab('contests');
+                                    }}
+                                    className="text-xs text-gray-400 hover:text-white px-2.5 py-1 rounded border border-[#2a2a2a] hover:border-gray-600 transition-colors cursor-pointer"
+                                  >
+                                    Manage
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedContestId(c.id);
+                                      setTab('analytics');
+                                    }}
+                                    className="text-xs text-orange-400 hover:text-orange-300 px-2.5 py-1 rounded bg-orange-500/10 border border-orange-500/20 transition-colors cursor-pointer"
+                                  >
+                                    Analytics
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -976,153 +676,506 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {/* ════════════════ TAB 4: TOKENS ════════════════ */}
-          {tab === 'tokens' && (
-            <div className="space-y-6">
-              {/* Top Contest Selector */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
-                    Select Contest:
-                  </label>
-                  <select
-                    value={selectedContestId}
-                    onChange={e => {
-                      setSelectedContestId(Number(e.target.value));
-                      setIsEditingMaster(false);
-                    }}
-                    className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
+          {/* ════════════════ TAB 2: CONTESTS ════════════════ */}
+          {tab === 'contests' && (
+            <div className="space-y-4">
+              {contests.length === 0 ? (
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-12 text-center max-w-lg mx-auto">
+                  <div className="text-4xl mb-3">🏆</div>
+                  <h3 className="text-base font-bold text-white mb-1">No Contests Created</h3>
+                  <p className="text-xs text-gray-500 mb-6">Create your first examination to set up questions, timers, and student access passcodes.</p>
+                  <button
+                    onClick={() => setShowCreateContest(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold text-xs transition-all cursor-pointer shadow-lg shadow-orange-500/20"
                   >
-                    {contests.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.status})
-                      </option>
-                    ))}
-                  </select>
+                    + Create New Contest
+                  </button>
                 </div>
+              ) : (
+                contests.map(c => {
+                  const isOpen = c.status === 'Open';
+                  const subsCount = submissions.filter(s => s.contestId === c.id || s.contest === c.name).length;
 
-                <button
-                  onClick={() => {
-                    const unused = (activeContest.accessTokens || []).filter(t => !t.isUsed);
-                    if (unused.length === 0) return notify('No unused tokens to copy', 'info');
-                    const text = unused.map((t, idx) => `${idx + 1}. ${t.code}`).join('\n');
-                    copyToClipboard(text, `${unused.length} Unused Tokens`);
-                  }}
-                  className="border border-[#2a2a2a] hover:border-orange-500 text-gray-300 hover:text-orange-400 px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer"
-                >
-                  📋 Copy All Unused
-                </button>
-              </div>
+                  return (
+                    <div
+                      key={c.id}
+                      className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 transition-all ${
+                        isOpen ? 'border-l-2 border-l-orange-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between flex-wrap gap-4 mb-3">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1.5">
+                            <Badge text={c.status} />
+                            <h3 className="text-base font-bold text-white">{c.name}</h3>
+                          </div>
+                          <p className="text-xs font-mono text-gray-400">
+                            {c.type} • {c.questions?.length || 0} Questions • {c.marks} Marks • {c.duration} min
+                          </p>
+                        </div>
 
-              {/* Master Token Card */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
-                <h3 className="text-sm font-bold text-white mb-1">Contest Password (Master Token)</h3>
-                <p className="text-xs text-gray-500 mb-4">Show on projector for all exam hall students</p>
+                        <div className="text-xs font-mono text-gray-400">
+                          <span className="text-green-400 font-bold">{subsCount || c.students || 0}</span> students active
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-3 max-w-md">
-                  {isEditingMaster ? (
-                    <input
-                      type="text"
-                      value={masterTokenInput}
-                      onChange={e => setMasterTokenInput(e.target.value.toUpperCase())}
-                      className="flex-1 bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white font-mono text-sm px-4 py-2 rounded-lg outline-none uppercase"
-                    />
-                  ) : (
-                    <div className="flex-1 bg-[#111] border border-[#2a2a2a] px-4 py-2 rounded-lg font-mono text-sm font-bold text-orange-400">
-                      {activeContest.token || activeContest.password}
+                      <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-2.5 mb-4 text-xs font-mono flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 uppercase">Token:</span>
+                          <code className="text-orange-400 font-bold">{c.token || c.password}</code>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(c.token || c.password, 'Token')}
+                          className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                        >
+                          📋 Copy
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a] flex-wrap gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => {
+                              setSelectedContestId(c.id);
+                              setTab('analytics');
+                            }}
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            📊 Analytics
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedContestId(c.id);
+                              setTab('tokens');
+                            }}
+                            className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            🔑 Tokens
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedAssignContestId(c.id);
+                              setTab('people');
+                            }}
+                            className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            👥 Admins
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedContestId(c.id);
+                              setTab('questions');
+                            }}
+                            className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            ❓ Questions
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleStatus(c.id)}
+                            className="border border-[#2a2a2a] hover:border-gray-600 text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer"
+                          >
+                            Toggle Status
+                          </button>
+                          <button
+                            onClick={() => handleDeleteContest(c.id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* ════════════════ TAB 3: ANALYTICS ════════════════ */}
+          {tab === 'analytics' && (
+            <div className="space-y-6">
+              {contests.length === 0 ? (
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-12 text-center max-w-lg mx-auto">
+                  <div className="text-4xl mb-3">📈</div>
+                  <h3 className="text-base font-bold text-white mb-1">No Contest Analytics Available</h3>
+                  <p className="text-xs text-gray-500 mb-6">Create an exam and student scores will automatically appear on the live leaderboard.</p>
+                  <button
+                    onClick={() => setShowCreateContest(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold text-xs cursor-pointer shadow-lg shadow-orange-500/20"
+                  >
+                    + Create Contest
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Top Contest Selector Dropdown */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
+                        Select Contest:
+                      </label>
+                      <select
+                        value={selectedContestId}
+                        onChange={e => setSelectedContestId(Number(e.target.value))}
+                        className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
+                      >
+                        {contests.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.status})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <span className="text-xs font-mono text-gray-400">
+                      {currentContestSubs.length} Submissions Logged
+                    </span>
+                  </div>
+
+                  {/* 5 KPI Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🎓 Completed</div>
+                      <div className="text-xl font-bold font-mono text-white">{currentContestSubs.length}</div>
+                    </div>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">📊 Avg Score</div>
+                      <div className="text-xl font-bold font-mono text-orange-400">
+                        {avgScore} <span className="text-xs text-gray-500">/ {contestTotalMarks}</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🏆 Top Score</div>
+                      <div className="text-xl font-bold font-mono text-green-400 truncate">
+                        {topScore} <span className="text-xs text-gray-400 font-sans">({topStudent?.name ? topStudent.name.split(' ')[0] : '—'})</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">🎯 Pass Rate</div>
+                      <div className={`text-xl font-bold font-mono ${passRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                        {passRate}%
+                      </div>
+                    </div>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">⏱️ Avg Time</div>
+                      <div className="text-xl font-bold font-mono text-white">{avgTimeStr}</div>
+                    </div>
+                  </div>
+
+                  {/* Question Success Rate Table */}
+                  {questionsAnalytics.length > 0 && (
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
+                      <h3 className="text-sm font-bold text-white mb-3">Question Success Rate</h3>
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
+                            <th className="pb-2.5 font-semibold w-10">#</th>
+                            <th className="pb-2.5 font-semibold">Question Title</th>
+                            <th className="pb-2.5 font-semibold w-24">Type</th>
+                            <th className="pb-2.5 font-semibold w-20">Marks</th>
+                            <th className="pb-2.5 font-semibold w-72">Success Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {questionsAnalytics.map(q => {
+                            const barColor = q.rate >= 60 ? 'bg-green-500' : q.rate >= 40 ? 'bg-yellow-500' : 'bg-red-500';
+                            return (
+                              <tr key={q.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
+                                <td className="py-2.5 font-mono text-gray-400">{q.idx}</td>
+                                <td className="py-2.5 font-semibold text-white truncate max-w-xs">{q.title || q.text}</td>
+                                <td className="py-2.5 font-mono uppercase text-gray-400">{q.type}</td>
+                                <td className="py-2.5 font-mono text-orange-400 font-bold">{q.marks}</td>
+                                <td className="py-2.5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-1.5 rounded-full bg-[#2a2a2a] overflow-hidden">
+                                      <div className={`h-full ${barColor}`} style={{ width: `${q.rate}%` }} />
+                                    </div>
+                                    <span className="font-mono text-gray-300 w-28 text-right">
+                                      {q.rate}% ({q.solvedCount}/{currentContestSubs.length})
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
 
-                  {isEditingMaster ? (
-                    <button
-                      onClick={handleSaveMasterToken}
-                      className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                    >
-                      Save
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setMasterTokenInput(activeContest.token || activeContest.password || '');
-                        setIsEditingMaster(true);
-                      }}
-                      className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  )}
+                  {/* Student Leaderboard Table */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
+                    <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                      <h3 className="text-sm font-bold text-white">Student Leaderboard</h3>
 
+                      {/* Filters */}
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <input
+                          type="text"
+                          value={analyticsSearch}
+                          onChange={e => setAnalyticsSearch(e.target.value)}
+                          placeholder="Search JNTU No. or Name..."
+                          className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs font-mono outline-none w-56"
+                        />
+
+                        <select
+                          value={analyticsBranch}
+                          onChange={e => setAnalyticsBranch(e.target.value)}
+                          className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer"
+                        >
+                          {['All', 'CSE', 'IT', 'ECE', 'AI&DS', 'ME', 'EEE'].map(b => (
+                            <option key={b} value={b}>{b === 'All' ? 'All Branches' : b}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
+                            <th className="pb-3 font-semibold">Rank</th>
+                            <th className="pb-3 font-semibold">JNTU No.</th>
+                            <th className="pb-3 font-semibold">Name</th>
+                            <th className="pb-3 font-semibold">Branch</th>
+                            <th className="pb-3 font-semibold">Score</th>
+                            <th className="pb-3 font-semibold">Solved</th>
+                            <th className="pb-3 font-semibold">Time</th>
+                            <th className="pb-3 font-semibold">Flags</th>
+                            <th className="pb-3 font-semibold text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedRankedSubs.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="text-center py-8 text-gray-500 font-mono">
+                                No submissions found.
+                              </td>
+                            </tr>
+                          ) : (
+                            sortedRankedSubs.map((s, idx) => {
+                              const rank = idx + 1;
+                              const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                              const solvedInfo = getSolvedCount(s, activeContest);
+                              const flagsCount = (s.warnings || 0) + (s.refreshes || 0);
+                              const isAuto = (s.warnings || 0) >= 3 || s.auto;
+                              const timeStr = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
+
+                              return (
+                                <tr key={s.id || idx} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
+                                  <td className="py-3 font-bold font-mono text-sm">{rankIcon}</td>
+                                  <td className="py-3 font-mono text-orange-400 font-semibold">{s.jntuNo}</td>
+                                  <td className="py-3 font-bold text-white">{s.name}</td>
+                                  <td className="py-3 text-gray-400">{s.branch}</td>
+                                  <td className="py-3 font-mono font-bold text-white">{s.score}/{s.total}</td>
+                                  <td className="py-3 font-mono">
+                                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                                      solvedInfo.solved === solvedInfo.total && solvedInfo.total > 0
+                                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                        : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                    }`}>
+                                      {solvedInfo.solved}/{solvedInfo.total}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 font-mono text-gray-300">{timeStr}</td>
+                                  <td className="py-3 font-mono">
+                                    {isAuto ? (
+                                      <span className="text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                        3 🚨 AUTO
+                                      </span>
+                                    ) : flagsCount > 0 ? (
+                                      <span className="text-yellow-400">{flagsCount} ⚠️</span>
+                                    ) : (
+                                      <span className="text-green-400">0 ✅</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 text-right">
+                                    <button
+                                      onClick={() => setSelectedStudentDrawer(s)}
+                                      className="text-orange-400 hover:text-orange-300 font-semibold text-xs cursor-pointer"
+                                    >
+                                      View Log 👁️
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ════════════════ TAB 4: TOKENS ════════════════ */}
+          {tab === 'tokens' && (
+            <div className="space-y-6">
+              {contests.length === 0 ? (
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-12 text-center max-w-lg mx-auto">
+                  <div className="text-4xl mb-3">🔑</div>
+                  <h3 className="text-base font-bold text-white mb-1">No Contests for Tokens</h3>
+                  <p className="text-xs text-gray-500 mb-6">Create an examination contest first to generate and manage single-use access slips.</p>
                   <button
-                    onClick={() => copyToClipboard(activeContest.token || activeContest.password, 'Master Token')}
-                    className="border border-[#2a2a2a] hover:border-orange-500 text-gray-300 hover:text-orange-400 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                    onClick={() => setShowCreateContest(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold text-xs cursor-pointer shadow-lg shadow-orange-500/20"
                   >
-                    📋 Copy
+                    + Create Contest
                   </button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Top Contest Selector */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
+                        Select Contest:
+                      </label>
+                      <select
+                        value={selectedContestId}
+                        onChange={e => {
+                          setSelectedContestId(Number(e.target.value));
+                          setIsEditingMaster(false);
+                        }}
+                        className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
+                      >
+                        {contests.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.status})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              {/* Single-Use Tokens Table */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white">Single-Use Tokens ({activeContest.accessTokens?.length || 0})</h3>
-                  {(activeContest.accessTokens || []).length > 0 && (
                     <button
-                      onClick={handleClearAllTokens}
-                      className="text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      onClick={() => {
+                        const unused = (activeContest.accessTokens || []).filter(t => !t.isUsed);
+                        if (unused.length === 0) return notify('No unused tokens to copy', 'info');
+                        const text = unused.map((t, idx) => `${idx + 1}. ${t.code}`).join('\n');
+                        copyToClipboard(text, `${unused.length} Unused Tokens`);
+                      }}
+                      className="border border-[#2a2a2a] hover:border-orange-500 text-gray-300 hover:text-orange-400 px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer"
                     >
-                      🗑️ Clear All Tokens
+                      📋 Copy All Unused
                     </button>
-                  )}
-                </div>
+                  </div>
 
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
-                      <th className="pb-3 font-semibold">Token Code</th>
-                      <th className="pb-3 font-semibold">Status</th>
-                      <th className="pb-3 font-semibold">Claimed By</th>
-                      <th className="pb-3 font-semibold">Claimed At</th>
-                      <th className="pb-3 font-semibold text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(activeContest.accessTokens || []).length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-500 font-mono">
-                          No single-use tokens generated for this contest yet. Click "+ Generate Tokens" above.
-                        </td>
-                      </tr>
-                    ) : (
-                      (activeContest.accessTokens || []).map(t => (
-                        <tr key={t.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
-                          <td className="py-3 font-mono font-bold text-orange-400">{t.code}</td>
-                          <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                              t.isUsed
-                                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                : 'bg-green-500/10 text-green-400 border border-green-500/20'
-                            }`}>
-                              {t.isUsed ? '🔒 Used' : '🟢 Unused'}
-                            </span>
-                          </td>
-                          <td className="py-3 font-mono text-gray-300">{t.usedBy || '—'}</td>
-                          <td className="py-3 font-mono text-gray-500">{t.claimedAt || '—'}</td>
-                          <td className="py-3 text-right">
-                            {!t.isUsed && (
-                              <button
-                                onClick={() => handleRevokeToken(t.id)}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
-                              >
-                                🗑️ Revoke
-                              </button>
-                            )}
-                          </td>
+                  {/* Master Token Card */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
+                    <h3 className="text-sm font-bold text-white mb-1">Contest Password (Master Token)</h3>
+                    <p className="text-xs text-gray-500 mb-4">Show on projector for all exam hall students</p>
+
+                    <div className="flex items-center gap-3 max-w-md">
+                      {isEditingMaster ? (
+                        <input
+                          type="text"
+                          value={masterTokenInput}
+                          onChange={e => setMasterTokenInput(e.target.value.toUpperCase())}
+                          className="flex-1 bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white font-mono text-sm px-4 py-2 rounded-lg outline-none uppercase"
+                        />
+                      ) : (
+                        <div className="flex-1 bg-[#111] border border-[#2a2a2a] px-4 py-2 rounded-lg font-mono text-sm font-bold text-orange-400">
+                          {activeContest.token || activeContest.password || '—'}
+                        </div>
+                      )}
+
+                      {isEditingMaster ? (
+                        <button
+                          onClick={handleSaveMasterToken}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setMasterTokenInput(activeContest.token || activeContest.password || '');
+                            setIsEditingMaster(true);
+                          }}
+                          className="border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => copyToClipboard(activeContest.token || activeContest.password, 'Master Token')}
+                        className="border border-[#2a2a2a] hover:border-orange-500 text-gray-300 hover:text-orange-400 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Single-Use Tokens Table */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-white">Single-Use Tokens ({activeContest.accessTokens?.length || 0})</h3>
+                      {(activeContest.accessTokens || []).length > 0 && (
+                        <button
+                          onClick={handleClearAllTokens}
+                          className="text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          🗑️ Clear All Tokens
+                        </button>
+                      )}
+                    </div>
+
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="text-gray-500 uppercase tracking-widest border-b border-[#2a2a2a] text-left">
+                          <th className="pb-3 font-semibold">Token Code</th>
+                          <th className="pb-3 font-semibold">Status</th>
+                          <th className="pb-3 font-semibold">Claimed By</th>
+                          <th className="pb-3 font-semibold">Claimed At</th>
+                          <th className="pb-3 font-semibold text-right">Action</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {(activeContest.accessTokens || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-500 font-mono">
+                              No single-use tokens generated for this contest yet. Click "+ Generate Tokens" above.
+                            </td>
+                          </tr>
+                        ) : (
+                          (activeContest.accessTokens || []).map(t => (
+                            <tr key={t.id} className="border-b border-[#1f1f1f] hover:bg-[#1f1f1f] transition-colors">
+                              <td className="py-3 font-mono font-bold text-orange-400">{t.code}</td>
+                              <td className="py-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                  t.isUsed
+                                    ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                    : 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                }`}>
+                                  {t.isUsed ? '🔒 Used' : '🟢 Unused'}
+                                </span>
+                              </td>
+                              <td className="py-3 font-mono text-gray-300">{t.usedBy || '—'}</td>
+                              <td className="py-3 font-mono text-gray-500">{t.claimedAt || '—'}</td>
+                              <td className="py-3 text-right">
+                                {!t.isUsed && (
+                                  <button
+                                    onClick={() => handleRevokeToken(t.id)}
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+                                  >
+                                    🗑️ Revoke
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1248,29 +1301,43 @@ export default function AdminDashboard({
           {/* ════════════════ TAB 6: QUESTIONS ════════════════ */}
           {tab === 'questions' && (
             <div className="space-y-6">
-              {/* Contest Selector */}
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
-                    Select Contest:
-                  </label>
-                  <select
-                    value={selectedContestId}
-                    onChange={e => setSelectedContestId(Number(e.target.value))}
-                    className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
+              {contests.length === 0 ? (
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-12 text-center max-w-lg mx-auto">
+                  <div className="text-4xl mb-3">❓</div>
+                  <h3 className="text-base font-bold text-white mb-1">No Contests for Questions</h3>
+                  <p className="text-xs text-gray-500 mb-6">Create an examination contest first to add Multiple Choice Questions or Coding Problems.</p>
+                  <button
+                    onClick={() => setShowCreateContest(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold text-xs cursor-pointer shadow-lg shadow-orange-500/20"
                   >
-                    {contests.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.status})
-                      </option>
-                    ))}
-                  </select>
+                    + Create Contest
+                  </button>
                 </div>
+              ) : (
+                <>
+                  {/* Contest Selector */}
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs uppercase font-mono tracking-widest text-gray-400 font-bold">
+                        Select Contest:
+                      </label>
+                      <select
+                        value={selectedContestId}
+                        onChange={e => setSelectedContestId(Number(e.target.value))}
+                        className="bg-[#111] border border-[#2a2a2a] focus:border-orange-500 text-white rounded-lg px-3.5 py-2 text-xs font-bold font-mono outline-none cursor-pointer"
+                      >
+                        {contests.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.status})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="text-xs font-mono text-gray-400">
-                  Total Questions: <span className="text-white font-bold">{activeContest.questions?.length || 0}</span> • Total Marks: <span className="text-orange-400 font-bold">{activeContest.marks}</span>
-                </div>
-              </div>
+                    <div className="text-xs font-mono text-gray-400">
+                      Total Questions: <span className="text-white font-bold">{activeContest.questions?.length || 0}</span> • Total Marks: <span className="text-orange-400 font-bold">{activeContest.marks || 0}</span>
+                    </div>
+                  </div>
 
               {/* Questions Table */}
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
@@ -1335,8 +1402,10 @@ export default function AdminDashboard({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </>
           )}
+        </div>
+      )}
         </main>
       </div>
 
