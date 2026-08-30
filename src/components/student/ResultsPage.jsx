@@ -7,11 +7,16 @@ export default function ResultsPage({ student, contest, result, onBack }) {
   const gradeColor = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
   const fmt = s => { const m = Math.floor(s / 60); const sec = s % 60; return `${m}m ${String(sec).padStart(2, '0')}s`; };
 
+  const now = new Date();
+  const submissionTime = result.submittedAt || (now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
+  const refreshes = result.refreshCount || 0;
+  const tabWarnings = result.warnings || 0;
+
   const stats = [
     { label: 'Total Score', value: `${result.score} / ${result.total}`, color: '#818cf8' },
     { label: 'Percentage', value: `${pct}%`, color: gradeColor },
     { label: 'Grade', value: grade, color: gradeColor },
-    { label: 'Time Taken', value: fmt(result.timeTaken), color: '#94a3b8' },
+    { label: 'Time Taken', value: fmt(result.timeTaken || 0), color: '#38bdf8' },
   ];
 
   const questions = contest?.questions || [];
@@ -25,16 +30,16 @@ export default function ResultsPage({ student, contest, result, onBack }) {
           <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
         </div>
         <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>CodeIT</span>
-        <span style={{ color: '#475569', marginLeft: '0.5rem' }}>/ Examination Results</span>
+        <span style={{ color: '#475569', marginLeft: '0.5rem' }}>/ Examination Results & Audit</span>
       </header>
 
       <main style={{ maxWidth: '860px', margin: '0 auto', padding: '2.5rem 1.5rem' }}>
         {/* Score Card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem', marginBottom: '2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem', marginBottom: '1.75rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '200px', height: '200px', background: `radial-gradient(circle,${gradeColor}15 0%,transparent 70%)`, borderRadius: '50%', pointerEvents: 'none' }} />
           <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Proctored Assessment Completed</div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.4rem' }}>{contest?.name}</h1>
-          <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>{student?.name} · {student?.jntuNo} · {student?.branch}</p>
+          <p style={{ color: '#94a3b8', marginBottom: '1.75rem' }}>{student?.name} · {student?.jntuNo} · {student?.branch}</p>
 
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '120px', height: '120px', borderRadius: '50%', border: `4px solid ${gradeColor}`, background: `${gradeColor}15`, marginBottom: '1.5rem' }}>
             <div>
@@ -50,6 +55,37 @@ export default function ResultsPage({ student, contest, result, onBack }) {
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Proctoring & Submission Audit Log Card */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem', marginBottom: '1.75rem' }}>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1rem', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            🛡️ Submission Timestamp & Proctoring Audit
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🕒 Submitted At</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', marginTop: '0.3rem' }}>{submissionTime}</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🔄 Page Refreshes</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: refreshes > 0 ? '#f59e0b' : '#86efac', marginTop: '0.3rem' }}>
+                {refreshes} {refreshes === 1 ? 'Time' : 'Times'}
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>⚠️ Tab Switches</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: tabWarnings > 0 ? '#f87171' : '#86efac', marginTop: '0.3rem' }}>
+                {tabWarnings} {tabWarnings === 1 ? 'Warning' : 'Warnings'}
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🔒 Integrity Status</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: (refreshes === 0 && tabWarnings === 0) ? '#86efac' : '#fcd34d', marginTop: '0.3rem' }}>
+                {(refreshes === 0 && tabWarnings === 0) ? '● Clean Session' : '⚠️ Flagged for Review'}
+              </div>
+            </div>
           </div>
         </div>
 

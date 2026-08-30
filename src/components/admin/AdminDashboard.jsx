@@ -42,6 +42,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', role: 'Faculty Admin', department: 'CSE Department' });
   const [selectedContestAdminId, setSelectedContestAdminId] = useState(() => contests[0]?.id || 1);
   const [selectedAdminToAssign, setSelectedAdminToAssign] = useState('');
+  const [selectedSubmissionModal, setSelectedSubmissionModal] = useState(null);
 
   const selectedTokenContest = contests.find(c => c.id === tokenContestId) || contests[0];
   const selectedAdminContest = contests.find(c => c.id === selectedContestAdminId) || contests[0];
@@ -898,7 +899,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
               {/* Questions List for Contest */}
               {(!editContest.questions || editContest.questions.length === 0) ? (
                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '18px', padding: '3.5rem 1.5rem', textAlign: 'center', color: '#64748b' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>❓</div>
+<div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>❓</div>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem' }}>No Questions Added Yet</h3>
                   <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '1.25rem' }}>Add MCQ or Coding questions with automated test case evaluation above.</p>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
@@ -954,15 +955,25 @@ export default function AdminDashboard({ contests = [], setContests, submissions
             </div>
           )}
 
-          {/* ── STUDENTS SUBMISSIONS ── */}
+          {/* ── STUDENTS SUBMISSIONS WITH REFRESH COUNT & TIMESTAMPS ── */}
           {tab === 'students' && (
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>Real-Time Student Submissions & Proctoring Logs</h3>
+                  <p style={{ color: '#64748b', fontSize: '0.8rem' }}>Monitor submission timestamps, time taken, page refresh counts, and proctoring warnings.</p>
+                </div>
+                <div style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '10px', padding: '0.4rem 0.85rem', fontSize: '0.8rem', fontWeight: 700 }}>
+                  Total: {submissions.length} Submissions
+                </div>
+              </div>
+
               {submissions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: '#64748b' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📋</div>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No Submissions Yet</h3>
                   <p style={{ fontSize: '0.85rem', color: '#475569', maxWidth: '400px', margin: '0 auto' }}>
-                    Student submissions, scores, and test details will appear here automatically in real time as students complete exams.
+                    Student submissions, scores, refresh counts, and proctoring logs will appear here automatically in real time as students complete exams.
                   </p>
                 </div>
               ) : (
@@ -970,27 +981,58 @@ export default function AdminDashboard({ contests = [], setContests, submissions
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        {['JNTU No.', 'Name', 'Branch', 'Score', 'Percentage', 'Contest', 'Submitted At'].map(h => (
-                          <th key={h} style={{ padding: '1rem 1.25rem', textAlign: 'left', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                        {['JNTU No.', 'Name & Branch', 'Contest', 'Score', 'Submitted At', 'Time Taken', 'Refreshes 🔄', 'Warnings ⚠️', 'Action'].map(h => (
+                          <th key={h} style={{ padding: '1rem 1.1rem', textAlign: 'left', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {submissions.map((s, i) => (
-                        <tr key={s.id || `${s.jntuNo}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                          <td style={{ padding: '1rem 1.25rem', fontFamily: 'monospace', color: '#818cf8', fontSize: '0.875rem' }}>{s.jntuNo}</td>
-                          <td style={{ padding: '1rem 1.25rem', fontWeight: 600, fontSize: '0.9rem' }}>{s.name}</td>
-                          <td style={{ padding: '1rem 1.25rem', color: '#94a3b8', fontSize: '0.875rem' }}>{s.branch}</td>
-                          <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#f1f5f9' }}>{s.score} / {s.total}</td>
-                          <td style={{ padding: '1rem 1.25rem' }}>
-                            <span style={{ color: (s.percentage || 0) >= 75 ? '#86efac' : (s.percentage || 0) >= 50 ? '#fcd34d' : '#f87171', fontWeight: 700 }}>
-                              {s.percentage !== undefined ? `${s.percentage}%` : `${Math.round((s.score / s.total) * 100)}%`}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.contest}</td>
-                          <td style={{ padding: '1rem 1.25rem', color: '#475569', fontSize: '0.8rem' }}>{s.time}</td>
-                        </tr>
-                      ))}
+                      {submissions.map((s, i) => {
+                        const timeTakenMin = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
+                        const refreshCount = s.refreshes !== undefined ? s.refreshes : 0;
+                        const warningCount = s.warnings !== undefined ? s.warnings : 0;
+                        const pct = s.percentage !== undefined ? s.percentage : Math.round((s.score / s.total) * 100);
+
+                        return (
+                          <tr key={s.id || `${s.jntuNo}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                            <td style={{ padding: '1rem 1.1rem', fontFamily: 'monospace', color: '#818cf8', fontSize: '0.875rem', fontWeight: 700 }}>{s.jntuNo}</td>
+                            <td style={{ padding: '1rem 1.1rem' }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#f8fafc' }}>{s.name}</div>
+                              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{s.branch}</div>
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem', color: '#cbd5e1', fontSize: '0.82rem', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {s.contest}
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem' }}>
+                              <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{s.score} / {s.total}</span>
+                              <span style={{ marginLeft: '0.5rem', color: pct >= 75 ? '#86efac' : pct >= 50 ? '#fcd34d' : '#f87171', fontSize: '0.78rem', fontWeight: 700 }}>
+                                ({pct}%)
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem', color: '#cbd5e1', fontSize: '0.82rem' }}>
+                              {s.submittedAt || s.time || '—'}
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem', color: '#38bdf8', fontSize: '0.82rem', fontFamily: 'monospace', fontWeight: 600 }}>
+                              {timeTakenMin}
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem' }}>
+                              <span style={{ background: refreshCount > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.12)', color: refreshCount > 0 ? '#fcd34d' : '#86efac', border: `1px solid ${refreshCount > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.25)'}`, borderRadius: '12px', padding: '0.2rem 0.6rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                {refreshCount} {refreshCount === 1 ? 'Refresh' : 'Refreshes'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem' }}>
+                              <span style={{ background: warningCount > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.12)', color: warningCount > 0 ? '#f87171' : '#86efac', border: `1px solid ${warningCount > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.25)'}`, borderRadius: '12px', padding: '0.2rem 0.6rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                {warningCount} {warningCount === 1 ? 'Warning' : 'Warnings'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem 1.1rem' }}>
+                              <button onClick={() => setSelectedSubmissionModal(s)} style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#a5b4fc', padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>
+                                View Log 👁️
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1017,6 +1059,85 @@ export default function AdminDashboard({ contests = [], setContests, submissions
           )}
         </main>
       </div>
+
+      {/* Submission Audit Details Modal */}
+      {selectedSubmissionModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: '1rem' }} onClick={e => { if (e.target === e.currentTarget) setSelectedSubmissionModal(null); }}>
+          <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '22px', padding: '2rem', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.8)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc' }}>
+                  {selectedSubmissionModal.name} ({selectedSubmissionModal.jntuNo})
+                </h2>
+                <p style={{ color: '#818cf8', fontSize: '0.82rem', marginTop: '0.2rem' }}>
+                  {selectedSubmissionModal.contest} · {selectedSubmissionModal.branch}
+                </p>
+              </div>
+              <button onClick={() => setSelectedSubmissionModal(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}>✕</button>
+            </div>
+
+            {/* Audit Log Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>🕒 Submission Time</div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#f1f5f9', marginTop: '0.3rem' }}>
+                  {selectedSubmissionModal.submittedAt || selectedSubmissionModal.time || '—'}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>⏱️ Time Taken</div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#38bdf8', marginTop: '0.3rem' }}>
+                  {selectedSubmissionModal.timeTaken ? `${Math.floor(selectedSubmissionModal.timeTaken / 60)}m ${selectedSubmissionModal.timeTaken % 60}s` : '—'}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>🔄 Page Refreshes</div>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: (selectedSubmissionModal.refreshes || 0) > 0 ? '#fcd34d' : '#86efac', marginTop: '0.3rem' }}>
+                  {selectedSubmissionModal.refreshes || 0} {(selectedSubmissionModal.refreshes || 0) === 1 ? 'Refresh' : 'Refreshes'}
+                </div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>⚠️ Tab Switches / Violations</div>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: (selectedSubmissionModal.warnings || 0) > 0 ? '#f87171' : '#86efac', marginTop: '0.3rem' }}>
+                  {selectedSubmissionModal.warnings || 0} {(selectedSubmissionModal.warnings || 0) === 1 ? 'Warning' : 'Warnings'}
+                </div>
+              </div>
+            </div>
+
+            {/* Score Summary */}
+            <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '14px', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Final Score:</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f1f5f9', marginLeft: '0.5rem' }}>
+                  {selectedSubmissionModal.score} / {selectedSubmissionModal.total}
+                </span>
+              </div>
+              <div style={{ fontWeight: 800, color: (selectedSubmissionModal.percentage || 0) >= 75 ? '#86efac' : '#fcd34d', fontSize: '1.1rem' }}>
+                {selectedSubmissionModal.percentage || Math.round((selectedSubmissionModal.score / selectedSubmissionModal.total) * 100)}%
+              </div>
+            </div>
+
+            {/* Submitted Code Preview */}
+            {selectedSubmissionModal.code && Object.keys(selectedSubmissionModal.code).length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#cbd5e1', marginBottom: '0.6rem' }}>Submitted Code:</h4>
+                {Object.entries(selectedSubmissionModal.code).map(([qId, sourceCode]) => (
+                  <div key={qId} style={{ marginBottom: '0.75rem', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.85rem' }}>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '0.4rem' }}>Question ID: #{qId}</div>
+                    <pre style={{ margin: 0, fontSize: '0.8rem', color: '#e2e8f0', fontFamily: 'monospace', maxHeight: '180px', overflowY: 'auto' }}>
+                      {sourceCode || '(No code submitted)'}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setSelectedSubmissionModal(null)} style={{ width: '100%', padding: '0.85rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#e2e8f0', cursor: 'pointer', fontWeight: 600 }}>
+              Close Audit Log
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add Platform Admin Modal */}
       {showAddAdminModal && (

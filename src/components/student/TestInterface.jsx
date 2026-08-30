@@ -4,7 +4,18 @@ import { runTestCase, runAllTestCases } from '../../utils/codeRunner.js';
 
 export default function TestInterface({ student, contest, onFinish }) {
   const contestKey = `codeit_session_${contest?.id}_${student?.jntuNo}`;
+  const refreshKey = `codeit_refreshes_${contest?.id}_${student?.jntuNo}`;
   const totalSec = (contest?.duration || 30) * 60;
+
+  // Track page refreshes during exam
+  const initialRefreshes = parseInt(sessionStorage.getItem(refreshKey) || '0', 10);
+  const [refreshCount, setRefreshCount] = useState(initialRefreshes);
+
+  useEffect(() => {
+    const nextRefreshes = initialRefreshes + 1;
+    sessionStorage.setItem(refreshKey, nextRefreshes.toString());
+    setRefreshCount(initialRefreshes); // 0 on first open, 1+ on subsequent refreshes
+  }, []);
 
   // Restore session from localStorage if present
   const loadSaved = () => {
@@ -250,7 +261,8 @@ export default function TestInterface({ student, contest, onFinish }) {
       code,
       lang,
       submissions,
-      warnings
+      warnings,
+      refreshCount: refreshCount || 0
     });
   };
 

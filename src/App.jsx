@@ -353,6 +353,9 @@ export default function App() {
       percentage: result.total > 0 ? Math.round((result.score / result.total) * 100) : 0,
       timeTaken: result.timeTaken,
       time: formattedTime,
+      submittedAt: formattedTime,
+      refreshes: result.refreshCount || 0,
+      warnings: result.warnings || 0,
       answers: result.answers,
       code: result.code,
       codingScores: result.codingScores
@@ -382,6 +385,9 @@ export default function App() {
         totalMarks: result.total,
         mcqCorrect: result.mcqCorrect,
         timeTaken: result.timeTaken,
+        refreshes: result.refreshCount || 0,
+        warnings: result.warnings || 0,
+        submittedAt: formattedTime,
         answers: result.answers,
         code: result.code
       })

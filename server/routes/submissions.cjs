@@ -9,8 +9,12 @@ try {
 const inMemorySubmissions = [];
 
 router.post('/', async (req, res) => {
-  const { jntuNo, studentName, branch, contestId, contestName, score, totalMarks, mcqCorrect, timeTaken, answers, code, lang } = req.body;
-  console.log(`[Submission Received] ${jntuNo} - Contest ${contestId}: Score ${score}/${totalMarks}`);
+  const { jntuNo, studentName, branch, contestId, contestName, score, totalMarks, mcqCorrect, timeTaken, refreshes, warnings, submittedAt, answers, code, lang } = req.body;
+  console.log(`[Submission Received] ${jntuNo} - Contest ${contestId}: Score ${score}/${totalMarks} (Refreshes: ${refreshes || 0}, Warnings: ${warnings || 0})`);
+
+  const now = new Date();
+  const formattedTime = submittedAt || (now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ', ' +
+    now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
 
   const subObj = {
     id: Date.now().toString(),
@@ -23,10 +27,13 @@ router.post('/', async (req, res) => {
     totalMarks,
     mcqCorrect,
     timeTaken,
+    refreshes: refreshes || 0,
+    warnings: warnings || 0,
     answers,
     code,
     lang,
-    submittedAt: new Date()
+    submittedAt: formattedTime,
+    createdAt: now
   };
 
   inMemorySubmissions.unshift(subObj);
