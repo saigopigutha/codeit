@@ -1,151 +1,396 @@
 import React, { useState } from 'react';
+import Logo from '../ui/Logo';
 
-function formatDuration(min) { return min >= 60 ? `${Math.floor(min/60)}h ${min%60>0?' '+min%60+'m':''}`.trim() : `${min} min`; }
+function formatDuration(min) {
+  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60 > 0 ? ' ' + (min % 60) + 'm' : ''}`.trim() : `${min}m`;
+}
 
 export default function ContestList({ contests = [], student, onEnterWithToken, onLogout }) {
+  const [activeNav, setActiveNav] = useState('contests');
   const [tab, setTab] = useState('All');
-  const [modal, setModal] = useState(null);
+  const [search, setSearch] = useState('');
+  const [selectedContest, setSelectedContest] = useState(null);
   const [tokenInput, setTokenInput] = useState('');
   const [tokenErr, setTokenErr] = useState('');
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [agreedToRules, setAgreedToRules] = useState(false);
 
-  const filtered = contests.filter(c => tab === 'All' || c.status === tab);
+  const filtered = contests.filter(c => {
+    const matchTab = tab === 'All' || c.status === tab;
+    const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.desc || '').toLowerCase().includes(search.toLowerCase());
+    return matchTab && matchSearch;
+  });
 
-  const handleClick = c => {
+  const handleCardClick = c => {
     if (c.status === 'Closed') return;
-    if (c.status === 'Upcoming') { alert('This contest has not started yet. Check back later.'); return; }
-    if (c.questions?.length === 0) { alert('This contest has no questions yet. Contact your instructor.'); return; }
-    setModal(c); setTokenInput(''); setTokenErr('');
-  };
-
-  const handleEnter = e => {
-    e.preventDefault();
-    if (!tokenInput.trim()) {
-      setTokenErr('Please enter the access token provided by your instructor.');
+    if (c.status === 'Upcoming') {
+      alert('This contest has not started yet. Check back when the status turns OPEN.');
       return;
     }
-    const res = onEnterWithToken(modal, tokenInput);
+    if (c.questions?.length === 0) {
+      alert('This contest has no questions configured yet. Please contact your instructor.');
+      return;
+    }
+    setSelectedContest(c);
+    setTokenInput('');
+    setTokenErr('');
+    setShowInstructions(false);
+    setAgreedToRules(false);
+  };
+
+  const handleVerifyToken = e => {
+    e.preventDefault();
+    if (!tokenInput.trim()) {
+      setTokenErr('Please enter the contest access token / passcode.');
+      return;
+    }
+    // Check token with parent handler or move to instructions
+    setShowInstructions(true);
+  };
+
+  const handleFinalStart = () => {
+    if (!agreedToRules) return;
+    const res = onEnterWithToken(selectedContest, tokenInput);
     if (res && !res.success) {
+      setShowInstructions(false);
       setTokenErr(res.error || 'Invalid access token.');
     } else {
-      setModal(null);
+      setSelectedContest(null);
+      setShowInstructions(false);
     }
   };
 
-  const logoSvg = <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>;
+  const navItems = [
+    { id: 'contests', label: 'Contests', icon: '🏠' },
+    { id: 'my-tests', label: 'My Tests', icon: '📋' },
+    { id: 'history', label: 'History', icon: '🔖' },
+    { id: 'alerts', label: 'Alerts', icon: '🔔', badge: 3 },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  ];
 
   return (
-    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)' }}>
-      <header style={{ background:'rgba(15,23,42,0.95)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0.9rem 2rem', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.7rem' }}>
-          <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center' }}>{logoSvg}</div>
-          <span style={{ fontWeight:800, fontSize:'1.25rem', letterSpacing:'-0.02em' }}>CodeIT</span>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:'1.5rem' }}>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontWeight:600, fontSize:'0.9rem' }}>{student?.name}</div>
-            <div style={{ color:'#64748b', fontSize:'0.75rem' }}>{student?.jntuNo} · {student?.branch}</div>
+    <div className="min-h-screen bg-[#0d0d0d] flex">
+      {/* ── Left Sidebar (code.zone style) ── */}
+      <aside className="w-64 bg-[#111111] border-r border-[#2a2a2a] p-5 flex flex-col justify-between flex-shrink-0">
+        <div>
+          {/* Logo */}
+          <div className="mb-8 pl-1">
+            <Logo size="md" subtitle="GMRIT Exam Portal" />
           </div>
-          <button onClick={onLogout} style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'10px', color:'#f87171', padding:'0.5rem 1.1rem', cursor:'pointer', fontSize:'0.85rem', fontWeight:600 }}>Logout</button>
-        </div>
-      </header>
 
-      <main style={{ maxWidth:'960px', margin:'0 auto', padding:'2.5rem 1.5rem' }}>
-        <div style={{ marginBottom:'2rem' }}>
-          <h1 style={{ fontSize:'1.9rem', fontWeight:800, letterSpacing:'-0.02em', marginBottom:'0.5rem' }}>Available Contests</h1>
-          <p style={{ color:'#64748b' }}>Select an open contest to enter. You will be prompted to enter your exam access token.</p>
-        </div>
-
-        <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.75rem', flexWrap:'wrap' }}>
-          {['All','Open','Upcoming','Closed'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ padding:'0.45rem 1.2rem', borderRadius:'20px', border:'none', cursor:'pointer', fontWeight:600, fontSize:'0.85rem', background:tab===t?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(255,255,255,0.06)', color:tab===t?'#fff':'#94a3b8', transition:'all 0.2s' }}>{t}</button>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div style={{ textAlign:'center', padding:'4rem', color:'#475569' }}>
-            <div style={{ fontSize:'3rem', marginBottom:'1rem' }}>🏁</div>
-            <p>No contests in this category right now.</p>
-          </div>
-        )}
-
-        <div style={{ display:'grid', gap:'1.25rem' }}>
-          {filtered.map(c => {
-            const statusColor = { Open:'#22c55e', Upcoming:'#f59e0b', Closed:'#ef4444' }[c.status] || '#818cf8';
-            const clickable = c.status === 'Open';
-            return (
-              <div key={c.id} onClick={() => handleClick(c)}
-                style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:20, padding:'1.75rem', cursor:clickable?'pointer':'not-allowed', opacity:c.status==='Closed'?0.5:1, transition:'all 0.2s' }}
-                onMouseEnter={e => { if(clickable){ e.currentTarget.style.borderColor='#6366f1'; e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 32px rgba(99,102,241,0.15)'; }}}
-                onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
-                  <h3 style={{ fontSize:'1.05rem', fontWeight:700, flex:1, paddingRight:'1rem' }}>{c.name}</h3>
-                  <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
-                    <span style={{ background:`${statusColor}20`, color:statusColor, border:`1px solid ${statusColor}40`, borderRadius:'20px', padding:'0.2rem 0.8rem', fontSize:'0.72rem', fontWeight:700 }}>{c.status}</span>
-                    <span style={{ background:'rgba(99,102,241,0.12)', color:'#818cf8', border:'1px solid rgba(99,102,241,0.25)', borderRadius:'20px', padding:'0.2rem 0.8rem', fontSize:'0.72rem', fontWeight:600 }}>{c.type}</span>
+          {/* Navigation Links */}
+          <nav className="space-y-1">
+            {navItems.map(item => {
+              const isActive = activeNav === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveNav(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? 'text-orange-500 bg-orange-500/10 font-semibold'
+                      : 'text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">{item.icon}</span>
+                    <span>{item.label}</span>
                   </div>
-                </div>
-                <p style={{ color:'#94a3b8', fontSize:'0.875rem', marginBottom:'1.1rem', lineHeight:1.5 }}>{c.desc}</p>
-                <div style={{ display:'flex', gap:'2rem', flexWrap:'wrap' }}>
-                  <span style={{ color:'#64748b', fontSize:'0.8rem' }}>⏱ {formatDuration(c.duration)}</span>
-                  <span style={{ color:'#64748b', fontSize:'0.8rem' }}>📊 {c.marks} marks</span>
-                  <span style={{ color:'#64748b', fontSize:'0.8rem' }}>❓ {c.questions?.length || 0} questions</span>
-                  <span style={{ color:'#818cf8', fontSize:'0.8rem', fontWeight:600 }}>🔑 Token Protected</span>
-                  {c.students > 0 && <span style={{ color:'#64748b', fontSize:'0.8rem' }}>👥 {c.students} attempted</span>}
-                </div>
-                {c.status === 'Open' && c.questions?.length > 0 && (
-                  <div style={{ marginTop:'1rem', paddingTop:'0.875rem', borderTop:'1px solid rgba(255,255,255,0.05)', color:'#6366f1', fontSize:'0.82rem', fontWeight:600 }}>Click to enter → Access token required</div>
-                )}
-                {c.status === 'Open' && c.questions?.length === 0 && (
-                  <div style={{ marginTop:'1rem', paddingTop:'0.875rem', borderTop:'1px solid rgba(255,255,255,0.05)', color:'#f59e0b', fontSize:'0.82rem' }}>⚠ No questions added yet by instructor</div>
-                )}
+                  {item.badge && (
+                    <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full font-mono">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* User Profile Card at Bottom */}
+        <div className="pt-4 border-t border-[#2a2a2a]">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 font-mono font-bold flex items-center justify-center text-xs flex-shrink-0">
+                {(student?.name || 'S')[0].toUpperCase()}
               </div>
-            );
-          })}
+              <div className="truncate">
+                <div className="text-xs font-bold text-white truncate">{student?.name || 'Student'}</div>
+                <div className="text-[10px] font-mono text-gray-400 truncate">
+                  {student?.jntuNo} · {student?.branch}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              title="Logout"
+              className="text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+            >
+              🚪
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Main Content Canvas ── */}
+      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+        {/* Top Sticky Header with Search */}
+        <header className="sticky top-0 z-20 bg-[#0d0d0d]/90 backdrop-blur-md border-b border-[#2a2a2a] px-8 py-4 flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search contests by name or topic..."
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 text-gray-100 placeholder-gray-500 rounded-lg pl-9 pr-4 py-2 text-xs outline-none transition-all duration-200 font-mono"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {['All', 'Open', 'Upcoming', 'Closed'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  tab === t
+                    ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/20'
+                    : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Contests Grid Canvas */}
+        <div className="p-8 max-w-5xl">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Available Contests</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Select an active contest to enter and verify your token</p>
+            </div>
+            <span className="text-xs font-mono text-gray-500">{filtered.length} Contests found</span>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-12 text-center text-gray-500">
+              <div className="text-3xl mb-2 font-mono text-orange-500">&lt;/&gt;</div>
+              <h3 className="text-sm font-semibold text-gray-300">No contests available in this category</h3>
+              <p className="text-xs text-gray-500 mt-1">Check back soon or select another status filter above.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filtered.map(c => {
+                const isOpen = c.status === 'Open';
+                const isUpcoming = c.status === 'Upcoming';
+
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => handleCardClick(c)}
+                    className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 transition-all duration-200 relative group ${
+                      isOpen
+                        ? 'border-l-4 border-l-orange-500 hover:border-orange-500/50 cursor-pointer shadow-lg shadow-black/40'
+                        : 'opacity-70 cursor-not-allowed'
+                    }`}
+                  >
+                    {/* Status Dot + Type Tag */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isOpen ? 'bg-green-500 animate-pulse' : isUpcoming ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                        />
+                        <span
+                          className={`text-[11px] font-bold uppercase tracking-wider ${
+                            isOpen ? 'text-green-400' : isUpcoming ? 'text-yellow-400' : 'text-red-400'
+                          }`}
+                        >
+                          {c.status}
+                        </span>
+                      </div>
+
+                      <span className="bg-[#111111] border border-[#2a2a2a] text-gray-400 text-[10px] font-mono uppercase px-2 py-0.5 rounded">
+                        {c.type}
+                      </span>
+                    </div>
+
+                    <h2 className="text-base font-bold text-white group-hover:text-orange-400 transition-colors mb-1.5">
+                      {c.name}
+                    </h2>
+                    <p className="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">
+                      {c.desc || 'Comprehensive coding and technical MCQs proctored assessment.'}
+                    </p>
+
+                    {/* Specs & Enter Button */}
+                    <div className="pt-3 border-t border-[#2a2a2a] flex items-center justify-between text-xs font-mono text-gray-400">
+                      <div className="flex items-center gap-3">
+                        <span>❓ {c.questions?.length || 0} Qs</span>
+                        <span>⏱ {formatDuration(c.duration)}</span>
+                        <span>📊 {c.marks} Marks</span>
+                      </div>
+
+                      {isOpen && (
+                        <button className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                          <span>Enter</span>
+                          <span>→</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
-      {modal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:'1rem' }}
-          onClick={e => { if(e.target===e.currentTarget) setModal(null); }}>
-          <div style={{ background:'#111827', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'22px', padding:'2.25rem', width:'100%', maxWidth:'440px', boxShadow:'0 32px 80px rgba(0,0,0,0.7)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.4rem' }}>
-              <span style={{ fontSize:'1.4rem' }}>🔑</span>
-              <h2 style={{ fontSize:'1.2rem', fontWeight:700 }}>Contest Access Token</h2>
+      {/* ── 1. Enter Password / Token Modal ── */}
+      {selectedContest && !showInstructions && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-500 flex items-center justify-center text-lg">
+                🔒
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Enter Contest Password</h2>
+                <div className="text-xs text-gray-400 font-mono">{selectedContest.name}</div>
+              </div>
             </div>
-            <p style={{ color:'#64748b', fontSize:'0.875rem', marginBottom:'0.25rem' }}>{modal.name}</p>
-            <p style={{ color:'#475569', fontSize:'0.78rem', marginBottom:'1.25rem' }}>{modal.questions?.length} questions · {modal.duration} min · {modal.marks} marks</p>
-            
+
+            <div className="bg-[#111111] border border-[#2a2a2a] rounded-lg p-3 my-4 text-xs font-mono text-gray-400 flex items-center justify-between">
+              <span>Duration: {selectedContest.duration} min</span>
+              <span>Questions: {selectedContest.questions?.length}</span>
+              <span>Marks: {selectedContest.marks}</span>
+            </div>
+
             {tokenErr && (
-              <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:'10px', padding:'0.65rem 1rem', fontSize:'0.85rem', marginBottom:'1rem', lineHeight:1.4 }}>
-                {tokenErr}
+              <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+                ⚠️ {tokenErr}
               </div>
             )}
-            
-            <form onSubmit={handleEnter}>
-              <div style={{ marginBottom:'1rem' }}>
-                <label style={{ display:'block', color:'#94a3b8', fontSize:'0.78rem', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.4rem' }}>
-                  Exam Access Token / Code
+
+            <form onSubmit={handleVerifyToken}>
+              <div className="mb-5">
+                <label className="block text-xs uppercase tracking-widest text-gray-400 font-semibold mb-2">
+                  Access Token / Password
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. ISTE-2024-CODE"
+                  placeholder="e.g. ROUND2-2024-CODE"
                   value={tokenInput}
                   onChange={e => setTokenInput(e.target.value.toUpperCase())}
                   autoFocus
                   required
-                  style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'12px', padding:'0.875rem 1rem', color:'#f1f5f9', fontSize:'0.95rem', fontWeight:600, letterSpacing:'0.05em', outline:'none', boxSizing:'border-box', textTransform:'uppercase' }}
+                  className="w-full bg-[#111111] border border-[#2a2a2a] focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 text-white font-mono rounded-lg px-4 py-3 text-sm outline-none uppercase transition-all duration-200"
                 />
+                <p className="text-[11px] text-gray-500 mt-1.5 font-mono">
+                  Enter the exam passcode provided by your instructor.
+                </p>
               </div>
 
-              <p style={{ fontSize:'0.75rem', color:'#64748b', marginBottom:'1.25rem' }}>
-                Enter the master token or single-use token provided by your exam invigilator.
-              </p>
-
-              <div style={{ display:'flex', gap:'0.75rem' }}>
-                <button type="button" onClick={() => setModal(null)} style={{ flex:1, padding:'0.85rem', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', color:'#94a3b8', cursor:'pointer', fontWeight:600 }}>Cancel</button>
-                <button type="submit" style={{ flex:1, padding:'0.85rem', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'12px', color:'#fff', cursor:'pointer', fontWeight:700 }}>Unlock & Start →</button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedContest(null)}
+                  className="flex-1 py-2.5 border border-[#2a2a2a] hover:border-gray-600 text-gray-300 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+                >
+                  Proceed →
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. Instructions Page Modal (Full-Screen Dark) ── */}
+      {selectedContest && showInstructions && (
+        <div className="fixed inset-0 z-50 bg-[#0d0d0d] flex items-center justify-center p-6">
+          <div className="w-full max-w-xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 shadow-2xl">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#2a2a2a]">
+              <Logo size="sm" />
+              <span className="text-xs font-mono text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
+                {selectedContest.name}
+              </span>
+            </div>
+
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+              <span>📋</span> Before you begin
+            </h2>
+            <p className="text-xs text-orange-400 font-mono mb-5 flex items-center gap-1.5">
+              <span>⚠️</span> This assessment is strictly proctored.
+            </p>
+
+            <div className="space-y-2.5 text-xs text-gray-300 font-mono bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 text-green-400">
+                <span>✅</span> Stay in fullscreen mode at all times.
+              </div>
+              <div className="flex items-center gap-2 text-green-400">
+                <span>✅</span> Do not switch tabs, minimize windows, or open other apps.
+              </div>
+              <div className="flex items-center gap-2 text-green-400">
+                <span>✅</span> Copy-paste and right-click are strictly disabled.
+              </div>
+              <div className="flex items-center gap-2 text-red-400">
+                <span>❌</span> 3 proctoring violations = automatic test submission.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mb-6 text-center text-xs font-mono">
+              <div className="bg-[#111111] border border-[#2a2a2a] p-3 rounded-lg">
+                <div className="text-gray-500 text-[10px] uppercase">Duration</div>
+                <div className="font-bold text-white mt-0.5">{selectedContest.duration} min</div>
+              </div>
+              <div className="bg-[#111111] border border-[#2a2a2a] p-3 rounded-lg">
+                <div className="text-gray-500 text-[10px] uppercase">Questions</div>
+                <div className="font-bold text-white mt-0.5">{selectedContest.questions?.length}</div>
+              </div>
+              <div className="bg-[#111111] border border-[#2a2a2a] p-3 rounded-lg">
+                <div className="text-gray-500 text-[10px] uppercase">Total Marks</div>
+                <div className="font-bold text-orange-400 mt-0.5">{selectedContest.marks}</div>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 mb-6 p-3 rounded-lg border border-[#2a2a2a] hover:border-orange-500/30 bg-[#111111] cursor-pointer text-xs text-gray-300 select-none">
+              <input
+                type="checkbox"
+                checked={agreedToRules}
+                onChange={e => setAgreedToRules(e.target.checked)}
+                className="w-4 h-4 accent-orange-500 rounded cursor-pointer"
+              />
+              <span>I have read and agree to all proctoring rules and exam policies.</span>
+            </label>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInstructions(false);
+                  setSelectedContest(null);
+                }}
+                className="flex-1 py-3 border border-[#2a2a2a] hover:border-gray-600 text-gray-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!agreedToRules}
+                onClick={handleFinalStart}
+                className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+              >
+                Enter Fullscreen &amp; Start →
+              </button>
+            </div>
           </div>
         </div>
       )}

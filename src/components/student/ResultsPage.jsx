@@ -1,22 +1,31 @@
 import React from 'react';
+import Logo from '../ui/Logo';
 
 export default function ResultsPage({ student, contest, result, onBack }) {
   if (!result) return null;
   const pct = Math.round((result.score / result.total) * 100);
   const grade = pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : 'F';
-  const gradeColor = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-  const fmt = s => { const m = Math.floor(s / 60); const sec = s % 60; return `${m}m ${String(sec).padStart(2, '0')}s`; };
+  const gradeColor = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f97316' : '#ef4444';
+  const fmt = s => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}m ${String(sec).padStart(2, '0')}s`;
+  };
 
   const now = new Date();
-  const submissionTime = result.submittedAt || (now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
+  const submissionTime =
+    result.submittedAt ||
+    now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' at ' +
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   const refreshes = result.refreshCount || 0;
   const tabWarnings = result.warnings || 0;
 
   const stats = [
-    { label: 'Total Score', value: `${result.score} / ${result.total}`, color: '#818cf8' },
+    { label: 'Total Score', value: `${result.score} / ${result.total}`, color: '#f1f1f1' },
     { label: 'Percentage', value: `${pct}%`, color: gradeColor },
     { label: 'Grade', value: grade, color: gradeColor },
-    { label: 'Time Taken', value: fmt(result.timeTaken || 0), color: '#38bdf8' },
+    { label: 'Time Taken', value: fmt(result.timeTaken || 0), color: '#f97316' },
   ];
 
   const questions = contest?.questions || [];
@@ -24,104 +33,122 @@ export default function ResultsPage({ student, contest, result, onBack }) {
   const codeQuestions = questions.filter(q => q.type === 'code');
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)' }}>
-      <header style={{ background: 'rgba(15,23,42,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '0.9rem 2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+    <div className="min-h-screen bg-[#0d0d0d] text-[#f1f1f1] flex flex-col">
+      <header className="h-14 bg-[#111111] border-b border-[#2a2a2a] px-8 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <Logo size="sm" />
+          <span className="text-xs font-mono text-gray-500">/ Results &amp; Proctoring Audit</span>
         </div>
-        <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>CodeIT</span>
-        <span style={{ color: '#475569', marginLeft: '0.5rem' }}>/ Examination Results & Audit</span>
+
+        <button
+          onClick={onBack}
+          className="text-xs font-semibold text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-gray-600 transition-colors cursor-pointer"
+        >
+          ← Contests
+        </button>
       </header>
 
-      <main style={{ maxWidth: '860px', margin: '0 auto', padding: '2.5rem 1.5rem' }}>
-        {/* Score Card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem', marginBottom: '1.75rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '200px', height: '200px', background: `radial-gradient(circle,${gradeColor}15 0%,transparent 70%)`, borderRadius: '50%', pointerEvents: 'none' }} />
-          <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Proctored Assessment Completed</div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.4rem' }}>{contest?.name}</h1>
-          <p style={{ color: '#94a3b8', marginBottom: '1.75rem' }}>{student?.name} · {student?.jntuNo} · {student?.branch}</p>
+      <main className="flex-1 max-w-4xl mx-auto w-full p-8 space-y-6">
+        {/* Top Executive Score Banner */}
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 text-center relative overflow-hidden shadow-2xl">
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-400 font-semibold mb-2">
+            Assessment Completed
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-1">{contest?.name}</h1>
+          <p className="text-xs font-mono text-gray-400 mb-6">
+            {student?.name} · {student?.jntuNo} · {student?.branch}
+          </p>
 
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '120px', height: '120px', borderRadius: '50%', border: `4px solid ${gradeColor}`, background: `${gradeColor}15`, marginBottom: '1.5rem' }}>
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-orange-500 bg-orange-500/10 mb-6">
             <div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: gradeColor, lineHeight: 1 }}>{grade}</div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{pct}%</div>
+              <div className="text-3xl font-extrabold text-white font-mono">{grade}</div>
+              <div className="text-[11px] font-mono text-orange-400">{pct}%</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-[#2a2a2a] max-w-2xl mx-auto">
             {stats.map(s => (
-              <div key={s.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+              <div key={s.label} className="bg-[#111111] border border-[#2a2a2a] p-3 rounded-xl">
+                <div className="text-lg font-bold font-mono" style={{ color: s.color }}>
+                  {s.value}
+                </div>
+                <div className="text-[10px] font-mono text-gray-500 uppercase mt-0.5 tracking-wider">
+                  {s.label}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Proctoring & Submission Audit Log Card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem', marginBottom: '1.75rem' }}>
-          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1rem', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            🛡️ Submission Timestamp & Proctoring Audit
+        {/* Proctoring Audit Log */}
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-4 font-mono">
+            <span>🛡️</span> Proctoring &amp; Submission Audit Log
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🕒 Submitted At</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', marginTop: '0.3rem' }}>{submissionTime}</div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="bg-[#111111] border border-[#2a2a2a] p-3.5 rounded-xl">
+              <div className="text-[10px] text-gray-500 uppercase">🕒 Submitted At</div>
+              <div className="font-bold text-white text-[11px] mt-1">{submissionTime}</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🔄 Page Refreshes</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: refreshes > 0 ? '#f59e0b' : '#86efac', marginTop: '0.3rem' }}>
+
+            <div className="bg-[#111111] border border-[#2a2a2a] p-3.5 rounded-xl">
+              <div className="text-[10px] text-gray-500 uppercase">🔄 Page Refreshes</div>
+              <div className={`font-bold text-sm mt-1 ${refreshes > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
                 {refreshes} {refreshes === 1 ? 'Time' : 'Times'}
               </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>⚠️ Tab Switches</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: tabWarnings > 0 ? '#f87171' : '#86efac', marginTop: '0.3rem' }}>
+
+            <div className="bg-[#111111] border border-[#2a2a2a] p-3.5 rounded-xl">
+              <div className="text-[10px] text-gray-500 uppercase">⚠️ Tab Switches</div>
+              <div className={`font-bold text-sm mt-1 ${tabWarnings > 0 ? 'text-red-400' : 'text-green-400'}`}>
                 {tabWarnings} {tabWarnings === 1 ? 'Warning' : 'Warnings'}
               </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>🔒 Integrity Status</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: (refreshes === 0 && tabWarnings === 0) ? '#86efac' : '#fcd34d', marginTop: '0.3rem' }}>
-                {(refreshes === 0 && tabWarnings === 0) ? '● Clean Session' : '⚠️ Flagged for Review'}
+
+            <div className="bg-[#111111] border border-[#2a2a2a] p-3.5 rounded-xl">
+              <div className="text-[10px] text-gray-500 uppercase">🔒 Session Integrity</div>
+              <div className="font-bold text-[11px] mt-1 text-green-400">
+                {refreshes === 0 && tabWarnings === 0 ? '● Clean Attempt' : '⚠️ Logged for Faculty'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Coding Questions Breakdown */}
+        {/* Coding Problems Evaluation */}
         {codeQuestions.length > 0 && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#fcd34d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              💻 Coding Problems Evaluation (HackerRank Test Cases)
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-4 font-mono">
+              <span>💻</span> Coding Challenge Test Case Results
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+            <div className="space-y-3">
               {codeQuestions.map((q, idx) => {
                 const sub = result.submissions?.[q.id];
                 const scoreInfo = result.codingScores?.[q.id] || { score: 0, maxMarks: q.marks, lang: 'python' };
                 const userCode = result.code?.[q.id] || '';
-                const passRatio = sub ? `${sub.passedCount}/${sub.totalCount} Test Cases Passed` : (userCode.trim().length > 15 ? 'Auto-Evaluated' : 'Not Attempted');
+                const passRatio = sub ? `${sub.passedCount}/${sub.totalCount} Test Cases Passed` : 'Auto-Evaluated';
 
                 return (
-                  <div key={q.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <div key={q.id} className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 text-xs font-mono">
+                    <div className="flex items-center justify-between mb-2">
                       <div>
-                        <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#e2e8f0' }}>Problem {idx + 1}: {q.title || 'Coding Problem'}</span>
-                        <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                          Language: <strong style={{ color: '#818cf8', textTransform: 'capitalize' }}>{scoreInfo.lang || 'Python'}</strong> · {passRatio}
+                        <span className="font-bold text-white">Problem {idx + 1}: {q.title || 'Coding Problem'}</span>
+                        <div className="text-gray-500 text-[11px] mt-0.5">
+                          Language: <span className="text-orange-400 capitalize">{scoreInfo.lang || 'python'}</span> · {passRatio}
                         </div>
                       </div>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: scoreInfo.score > 0 ? '#86efac' : '#f87171' }}>
+                      <span className={`font-bold text-sm ${scoreInfo.score > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         +{scoreInfo.score} / {q.marks} Marks
                       </span>
                     </div>
 
                     {userCode && (
-                      <details style={{ marginTop: '0.75rem' }}>
-                        <summary style={{ color: '#94a3b8', fontSize: '0.78rem', cursor: 'pointer', outline: 'none' }}>
+                      <details className="mt-3 pt-2 border-t border-[#2a2a2a]">
+                        <summary className="text-gray-400 hover:text-orange-400 cursor-pointer outline-none select-none">
                           View Submitted Code ({userCode.split('\n').length} lines)
                         </summary>
-                        <pre style={{ background: '#020617', padding: '0.85rem', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.8rem', fontFamily: 'monospace', marginTop: '0.5rem', maxHeight: '160px', overflowY: 'auto' }}>
+                        <pre className="bg-[#141414] border border-[#2a2a2a] p-3 rounded-lg text-gray-200 mt-2 max-h-48 overflow-y-auto text-[11px] leading-relaxed">
                           {userCode}
                         </pre>
                       </details>
@@ -133,27 +160,46 @@ export default function ResultsPage({ student, contest, result, onBack }) {
           </div>
         )}
 
-        {/* MCQ Breakdown */}
+        {/* Multiple Choice Breakdown */}
         {mcqs.length > 0 && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '1.25rem', color: '#86efac' }}>📝 Multiple Choice Breakdown</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-4 font-mono">
+              <span>📝</span> Multiple Choice Questions Breakdown
+            </h2>
+
+            <div className="space-y-3">
               {mcqs.map((q, i) => {
                 const userAns = result.answers?.[q.id];
                 const correct = userAns === q.correct;
                 const notAnswered = userAns === undefined;
+
                 return (
-                  <div key={q.id} style={{ background: correct ? 'rgba(34,197,94,0.06)' : notAnswered ? 'rgba(100,116,139,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${correct ? 'rgba(34,197,94,0.2)' : notAnswered ? 'rgba(100,116,139,0.15)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '12px', padding: '1rem 1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
-                      <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>Q{i + 1}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: correct ? '#86efac' : notAnswered ? '#64748b' : '#f87171' }}>{correct ? `+${q.marks}` : notAnswered ? '—' : '0'}</span>
+                  <div
+                    key={q.id}
+                    className={`p-4 rounded-xl border text-xs font-mono ${
+                      correct
+                        ? 'bg-green-500/5 border-green-500/30'
+                        : notAnswered
+                        ? 'bg-[#111111] border-[#2a2a2a]'
+                        : 'bg-red-500/5 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-gray-400 font-bold">Q{i + 1}</span>
+                      <span className={`font-bold ${correct ? 'text-green-400' : notAnswered ? 'text-gray-500' : 'text-red-400'}`}>
+                        {correct ? `+${q.marks}` : notAnswered ? '0 (Skipped)' : '0'}
+                      </span>
                     </div>
-                    <p style={{ fontSize: '0.875rem', color: '#e2e8f0', marginBottom: '0.5rem' }}>{q.text}</p>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                      {notAnswered ? <span style={{ color: '#64748b' }}>Not attempted</span> : (
+                    <p className="text-gray-200 font-sans text-xs mb-2 leading-relaxed">{q.text}</p>
+                    <div className="text-[11px] text-gray-400">
+                      {notAnswered ? (
+                        <span>Not attempted</span>
+                      ) : (
                         <>
-                          <span>Your answer: <strong style={{ color: correct ? '#86efac' : '#f87171' }}>{q.options[userAns]}</strong></span>
-                          {!correct && <span style={{ marginLeft: '1rem' }}>Correct: <strong style={{ color: '#86efac' }}>{q.options[q.correct]}</strong></span>}
+                          <span>Your answer: <strong className={correct ? 'text-green-400' : 'text-red-400'}>{q.options[userAns]}</strong></span>
+                          {!correct && (
+                            <span className="ml-3 text-green-400">Correct: <strong>{q.options[q.correct]}</strong></span>
+                          )}
                         </>
                       )}
                     </div>
@@ -164,9 +210,12 @@ export default function ResultsPage({ student, contest, result, onBack }) {
           </div>
         )}
 
-        {result.auto && <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '12px', padding: '0.875rem 1.25rem', color: '#fcd34d', fontSize: '0.875rem', marginBottom: '1.5rem' }}>⚠️ Test was auto-submitted when the timer expired.</div>}
-
-        <button onClick={onBack} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', borderRadius: '14px', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 28px rgba(99,102,241,0.3)' }}>← Back to Contest List</button>
+        <button
+          onClick={onBack}
+          className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all cursor-pointer shadow-lg shadow-orange-500/20 text-center text-sm"
+        >
+          ← Back to Contest List
+        </button>
       </main>
     </div>
   );

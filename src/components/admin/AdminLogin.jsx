@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Logo from '../ui/Logo';
 
 export default function AdminLogin({ admins = [], onLogin, onBack }) {
   const [email, setEmail] = useState('');
@@ -47,39 +48,85 @@ export default function AdminLogin({ admins = [], onLogin, onBack }) {
     }, 400);
   };
 
-  const inp = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'12px', padding:'0.85rem 1rem', color:'#f1f5f9', fontSize:'0.9rem', outline:'none', boxSizing:'border-box' };
-
   return (
-    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#0c0a1e 0%,#0f172a 50%,#0c0a1e 100%)', display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
-      <div style={{ width:'100%', maxWidth:'440px' }}>
-        <button onClick={onBack} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer', fontSize:'0.875rem', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'0.4rem', padding:0 }}>← Student Login</button>
+    <div className="min-h-screen dev-grid-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-[440px]">
+        <button
+          onClick={onBack}
+          className="text-gray-400 hover:text-white text-xs font-semibold mb-5 flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          ← Student Login
+        </button>
 
-        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'68px', height:'68px', borderRadius:'18px', background:'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow:'0 10px 36px rgba(124,58,237,0.45)', marginBottom:'1rem' }}>
-            <svg width="32" height="32" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+          {/* Logo & Header */}
+          <div className="flex items-center justify-between mb-6">
+            <Logo size="md" />
+            <span className="text-[11px] font-mono uppercase tracking-widest text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/20">
+              Admin Portal
+            </span>
           </div>
-          <h1 style={{ fontSize:'2rem', fontWeight:800, color:'#fff', letterSpacing:'-0.02em' }}>Admin Portal</h1>
-          <p style={{ color:'#7c3aed', marginTop:'0.4rem', fontSize:'0.75rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>CodeIT · Faculty & Exam Controller</p>
-        </div>
 
-        <div style={{ background:'rgba(255,255,255,0.04)', backdropFilter:'blur(24px)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'24px', padding:'2.5rem', boxShadow:'0 32px 80px rgba(0,0,0,0.5)' }}>
-          {error && <div style={{ marginBottom:'1.25rem', padding:'0.75rem 1rem', borderRadius:'10px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', fontSize:'0.85rem' }}>{error}</div>}
+          <div className="mb-6">
+            <h1 className="text-xl font-bold text-white tracking-tight">Faculty &amp; Controller Sign In</h1>
+            <p className="text-xs text-gray-400 mt-1">Authorized access to exam controllers &amp; course evaluators</p>
+            <div className="h-px bg-[#2a2a2a] w-full mt-4" />
+          </div>
 
-          <form onSubmit={submit}>
-            <div style={{ marginBottom:'1.25rem' }}>
-              <label style={{ display:'block', color:'#94a3b8', fontSize:'0.8rem', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.5rem' }}>Admin Email / Username</label>
-              <input type="text" placeholder="Enter admin email" value={email} onChange={e=>setEmail(e.target.value)} required style={inp} onFocus={e=>e.target.style.borderColor='#7c3aed'} onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'} />
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+              ⚠️ {error}
             </div>
-            <div style={{ marginBottom:'1.75rem' }}>
-              <label style={{ display:'block', color:'#94a3b8', fontSize:'0.8rem', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.5rem' }}>Password</label>
-              <input type="password" placeholder="Enter password" value={password} onChange={e=>setPassword(e.target.value)} required style={inp} onFocus={e=>e.target.style.borderColor='#7c3aed'} onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'} />
+          )}
+
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-gray-400 font-semibold mb-2">
+                Admin Email / Username
+              </label>
+              <input
+                type="text"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@gmrit.edu.in"
+                required
+                className="w-full bg-[#111111] border border-[#2a2a2a] focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 text-white font-mono rounded-lg px-4 py-2.5 text-sm outline-none transition-all duration-200"
+              />
             </div>
-            <button type="submit" disabled={loading} style={{ width:'100%', padding:'0.95rem', background:'linear-gradient(135deg,#7c3aed,#4f46e5)', border:'none', borderRadius: '14px', color:'#fff', fontSize:'1rem', fontWeight:700, cursor:loading?'not-allowed':'pointer', opacity:loading?0.7:1, boxShadow:'0 6px 28px rgba(124,58,237,0.35)' }}>
-              {loading ? 'Signing in…' : 'Sign In as Admin →'}
+
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-gray-400 font-semibold mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                required
+                className="w-full bg-[#111111] border border-[#2a2a2a] focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 text-white rounded-lg px-4 py-2.5 text-sm outline-none transition-all duration-200"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20 disabled:opacity-50 text-sm"
+            >
+              {loading ? (
+                <span className="font-mono text-sm">Authenticating...</span>
+              ) : (
+                <>
+                  <span>Sign In as Admin</span>
+                  <span className="font-mono">→</span>
+                </>
+              )}
             </button>
           </form>
 
-          <p style={{ textAlign:'center', color:'#475569', fontSize:'0.72rem', marginTop:'1.5rem' }}>🔒 Role-based access control · GMRIT Admin Console</p>
+          <p className="text-center text-gray-500 text-[11px] font-mono mt-6">
+            🔒 Role-based access control · GMRIT Admin Console
+          </p>
         </div>
       </div>
     </div>

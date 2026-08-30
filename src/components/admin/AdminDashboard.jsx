@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
+import Logo from '../ui/Logo';
 
 function Badge({ text }) {
-  const map = { Open: '#22c55e', Upcoming: '#f59e0b', Closed: '#ef4444' };
-  const c = map[text] || '#818cf8';
-  return <span style={{ background: `${c}18`, color: c, border: `1px solid ${c}35`, borderRadius: '20px', padding: '0.2rem 0.75rem', fontSize: '0.72rem', fontWeight: 700 }}>{text}</span>;
+  const map = { Open: '#22c55e', Upcoming: '#eab308', Closed: '#ef4444' };
+  const c = map[text] || '#f97316';
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2 py-0.5 rounded border" style={{ background: `${c}15`, color: c, borderColor: `${c}30` }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c }} />
+      {text}
+    </span>
+  );
 }
 
 const emptyMCQ = () => ({ id: Date.now(), type: 'mcq', text: '', options: ['', '', '', ''], correct: 0, marks: 10 });
@@ -98,285 +104,243 @@ export default function AdminDashboard({ contests = [], setContests, submissions
 
   // Export Contest Analytics to CSV
   const handleExportContestCSV = (contest, contestSubs) => {
-    if (!contestSubs || contestSubs.length === 0) {
-      notify('No submissions available to export for this contest.', 'info');
-      return;
-    }
-    const headers = ['Rank', 'JNTU No', 'Student Name', 'Branch', 'Score', 'Total Marks', 'Percentage', 'Questions Solved', 'Time Taken', 'Refreshes', 'Warnings', 'Submitted At'];
-    const rows = contestSubs.map((s, idx) => {
-      const qSolved = getSolvedCount(s, contest);
-      const timeTakenMin = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
+    if (!contest) return;
+    const sorted = [...contestSubs].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (a.timeTaken || 0) - (b.timeTaken || 0);
+    });
+
+    const headers = [
+      'Rank',
+      'JNTU Number',
+      'Student Name',
+      'Branch',
+      'Score',
+      'Total Marks',
+      'Percentage',
+      'Questions Solved',
+      'Total Questions',
+      'Time Taken (Min:Sec)',
+      'Page Refreshes',
+      'Tab Warnings',
+      'Submitted At'
+    ];
+
+    const rows = sorted.map((s, index) => {
+      const solvedInfo = getSolvedCount(s, contest);
+      const timeFmt = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : 'N/A';
       const pct = s.percentage !== undefined ? s.percentage : Math.round((s.score / s.total) * 100);
       return [
-        idx + 1,
+        index + 1,
         `"${s.jntuNo || ''}"`,
-        `"${s.name || ''}"`,
+        `"${(s.name || '').replace(/"/g, '""')}"`,
         `"${s.branch || ''}"`,
         s.score,
         s.total,
-        `"${pct}%"`,
-        `"${qSolved.solved}/${qSolved.total}"`,
-        `"${timeTakenMin}"`,
+        `${pct}%`,
+        solvedInfo.solved,
+        solvedInfo.total,
+        `"${timeFmt}"`,
         s.refreshes || 0,
         s.warnings || 0,
         `"${s.submittedAt || s.time || ''}"`
       ];
     });
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(contest?.name || 'Contest').replace(/[^a-zA-Z0-9]/g, '_')}_Results.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    notify('Contest results exported to CSV successfully!', 'success');
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `CodeIT_${contest.name.replace(/[^a-zA-Z0-9]/g, '_')}_Analytics.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    notify(`Exported CSV for ${contest.name}`, 'success');
   };
 
-  /* ── Create contest ── */
-  const handleCreate = e => {
-    e.preventDefault();
-    const prefix = (newC.name || 'CONTEST').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
-    const generatedToken = newC.token?.trim() || `${prefix}-${randomHex(4)}-CODE`;
-    const nc = {
-      ...newC,
+  const createContest = () => {
+    if (!newC.name.trim()) return;
+    const genToken = newC.token?.trim().toUpperCase() || `${newC.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase()}-${randomHex(4)}`;
+    const created = {
       id: Date.now(),
-      token: generatedToken,
-      password: newC.password || generatedToken.toLowerCase(),
-      accessTokens: [],
-      admins: ['admin@gmrit.edu.in'],
+      name: newC.name,
+      desc: newC.desc,
+      duration: Number(newC.duration),
+      type: newC.type,
+      marks: 100,
       students: 0,
-      questions: [],
-      marks: 0
+      status: newC.status || 'Upcoming',
+      token: genToken,
+      password: genToken,
+      accessTokens: [],
+      admins: [],
+      questions: []
     };
-    setContests(cs => [...cs, nc]);
-    setEditContest(nc);
-    setShowCreate(false);
+    setContests(cs => [...cs, created]);
     setNewC({ name: '', desc: '', duration: 60, type: 'Mixed', token: '', password: '', status: 'Upcoming' });
-    setTab('questions');
-    notify('Contest created successfully with access token!', 'success');
+    setShowCreate(false);
+    notify('Contest created successfully! Manage questions to add problems.');
   };
 
-  /* ── Delete contest ── */
-  const deleteContest = id => {
-    if (!window.confirm('Delete this contest?')) return;
-    setContests(cs => cs.filter(c => c.id !== id));
-    if (editContest?.id === id) { setEditContest(null); setTab('contests'); }
-  };
-
-  /* ── Toggle status ── */
   const toggleStatus = id => {
     setContests(cs => cs.map(c => {
       if (c.id !== id) return c;
-      const next = { Open: 'Closed', Upcoming: 'Open', Closed: 'Upcoming' }[c.status];
+      const next = c.status === 'Open' ? 'Closed' : c.status === 'Closed' ? 'Upcoming' : 'Open';
       return { ...c, status: next };
     }));
   };
 
-  /* ── Open question editor for a contest ── */
-  const openQuestions = c => { setEditContest(c); setAddingQ(null); setTab('questions'); };
-
-  /* ── Start adding a new question ── */
-  const startAdd = type => { setAddType(type); setAddingQ(type === 'mcq' ? emptyMCQ() : emptyCode()); };
-
-  /* ── Add / Delete test cases in draft coding question ── */
-  const addTestCase = () => {
-    if (!addingQ || addingQ.type !== 'code') return;
-    setAddingQ(q => ({
-      ...q,
-      testCases: [...(q.testCases || []), { id: Date.now(), input: '', expected: '', isHidden: false, explanation: '' }]
-    }));
-  };
-
-  const updateTestCase = (idx, field, value) => {
-    setAddingQ(q => {
-      const tc = [...(q.testCases || [])];
-      tc[idx] = { ...tc[idx], [field]: value };
-      return { ...q, testCases: tc };
-    });
-  };
-
-  const removeTestCase = idx => {
-    setAddingQ(q => ({
-      ...q,
-      testCases: (q.testCases || []).filter((_, i) => i !== idx)
-    }));
-  };
-
-  /* ── Admin Management Handlers ── */
-  const handleAddPlatformAdmin = e => {
-    e.preventDefault();
-    if (!newAdmin.name.trim() || !newAdmin.email.trim() || !newAdmin.password.trim()) {
-      alert('Please fill all admin details.');
-      return;
+  const deleteContest = id => {
+    if (window.confirm('Delete this contest permanently? All student tokens and question data will be lost.')) {
+      setContests(cs => cs.filter(c => c.id !== id));
+      notify('Contest deleted', 'info');
     }
-    const cleanEmail = newAdmin.email.trim().toLowerCase();
-    if (admins.some(a => a.email.toLowerCase() === cleanEmail)) {
-      alert('An administrator with this email already exists.');
+  };
+
+  // Question bank actions
+  const openQuestions = c => {
+    setEditContest(c);
+    setAddingQ(null);
+    setTab('questions');
+  };
+
+  const startAdd = type => {
+    setAddType(type);
+    setAddingQ(type === 'mcq' ? emptyMCQ() : emptyCode());
+  };
+
+  const saveQuestion = () => {
+    if (!addingQ) return;
+    if (addType === 'mcq' && !addingQ.text.trim()) { alert('Enter question text'); return; }
+    if (addType === 'code' && (!addingQ.title.trim() || !addingQ.text.trim())) { alert('Enter problem title and description'); return; }
+
+    const updated = {
+      ...editContest,
+      questions: [...(editContest.questions || []), addingQ]
+    };
+    // Recalculate marks
+    updated.marks = updated.questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+
+    setContests(cs => cs.map(c => c.id === editContest.id ? updated : c));
+    setEditContest(updated);
+    setAddingQ(null);
+    notify('Question added successfully!');
+  };
+
+  const deleteQuestion = qId => {
+    const updated = {
+      ...editContest,
+      questions: editContest.questions.filter(q => q.id !== qId)
+    };
+    updated.marks = updated.questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    setContests(cs => cs.map(c => c.id === editContest.id ? updated : c));
+    setEditContest(updated);
+    notify('Question deleted', 'info');
+  };
+
+  // ── Global & Contest Admin Management Handlers ──
+  const handleAddPlatformAdmin = (e) => {
+    e.preventDefault();
+    if (!newAdmin.email.trim() || !newAdmin.name.trim()) return;
+
+    const email = newAdmin.email.trim().toLowerCase();
+    if (admins.some(a => a.email.toLowerCase() === email)) {
+      notify('An administrator with this email already exists!', 'error');
       return;
     }
 
     const created = {
       id: Date.now(),
       name: newAdmin.name.trim(),
-      email: cleanEmail,
-      password: newAdmin.password.trim(),
-      role: newAdmin.role,
-      department: newAdmin.department || 'Academic Department',
-      status: 'Active',
-      addedAt: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      email,
+      password: newAdmin.password.trim() || 'admin123',
+      role: newAdmin.role || 'Faculty Admin',
+      department: newAdmin.department || 'CSE Department',
+      createdAt: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
     setAdmins(prev => [...prev, created]);
     setShowAddAdminModal(false);
     setNewAdmin({ name: '', email: '', password: '', role: 'Faculty Admin', department: 'CSE Department' });
-    notify(`Admin "${created.name}" added successfully!`, 'success');
+    notify(`Added ${created.name} (${created.role}) successfully!`);
   };
 
-  const handleDeletePlatformAdmin = id => {
-    const target = admins.find(a => a.id === id);
+  const handleDeletePlatformAdmin = (adminId, adminEmail) => {
     if (admins.length <= 1) {
-      alert('At least one platform administrator must remain.');
+      notify('Cannot delete the last remaining platform admin!', 'error');
       return;
     }
-    if (target?.role === 'Super Admin' && admins.filter(a => a.role === 'Super Admin').length <= 1) {
-      alert('Cannot delete the primary Super Administrator.');
-      return;
+    if (window.confirm(`Are you sure you want to remove administrator: ${adminEmail}?`)) {
+      setAdmins(prev => prev.filter(a => a.id !== adminId));
+      notify('Administrator removed', 'info');
     }
-    if (!window.confirm(`Are you sure you want to remove administrator "${target?.name}"?`)) return;
-
-    setAdmins(prev => prev.filter(a => a.id !== id));
-    notify(`Administrator removed.`, 'info');
   };
 
-  const handleAssignContestAdmin = (contestId, email) => {
-    if (!email) return;
-    setContests(cs => cs.map(c => {
+  const handleAssignContestAdmin = (contestId, adminEmail) => {
+    if (!adminEmail) return;
+    setContests(prev => prev.map(c => {
       if (c.id !== contestId) return c;
-      const current = c.admins || [];
-      if (current.includes(email)) return c;
-      return { ...c, admins: [...current, email] };
+      const currentAdmins = c.admins || [];
+      if (currentAdmins.includes(adminEmail)) return c;
+      return { ...c, admins: [...currentAdmins, adminEmail] };
     }));
+    notify(`Assigned ${adminEmail} to this contest!`);
     setSelectedAdminToAssign('');
-    notify(`Assigned ${email} as contest coordinator!`, 'success');
   };
 
-  const handleRemoveContestAdmin = (contestId, email) => {
-    setContests(cs => cs.map(c => {
+  const handleRemoveContestAdmin = (contestId, adminEmail) => {
+    setContests(prev => prev.map(c => {
       if (c.id !== contestId) return c;
-      return { ...c, admins: (c.admins || []).filter(a => a !== email) };
+      return { ...c, admins: (c.admins || []).filter(email => email !== adminEmail) };
     }));
-    notify(`Removed ${email} from contest coordinators.`, 'info');
+    notify(`Removed coordinator ${adminEmail} from contest`, 'info');
   };
 
-  /* ── Save draft question to contest ── */
-  const saveQuestion = () => {
-    if (!addingQ) return;
-    if (!addingQ.text.trim()) { alert('Question description cannot be empty.'); return; }
-    
-    if (addingQ.type === 'mcq') {
-      if (addingQ.options.some(o => !o.trim())) { alert('All 4 MCQ options must be filled.'); return; }
-    }
-
-    if (addingQ.type === 'code') {
-      if (!addingQ.testCases || addingQ.testCases.length === 0) {
-        alert('Please add at least 1 test case for this coding problem.');
-        return;
-      }
-      if (addingQ.testCases.some(tc => !tc.expected || !tc.expected.trim())) {
-        alert('All test cases must have an Expected Output. Input is optional.');
-        return;
-      }
-    }
-
-    setContests(cs => cs.map(c => {
-      if (c.id !== editContest.id) return c;
-      const updatedQs = [...(c.questions || []), { ...addingQ, id: Date.now() }];
-      const totalMarks = updatedQs.reduce((s, q) => s + q.marks, 0);
-      return { ...c, questions: updatedQs, marks: totalMarks };
+  // ── Access Token Handlers ──
+  const handleSaveMasterToken = (contestId) => {
+    const clean = customMasterToken.trim().toUpperCase();
+    if (!clean) return;
+    setContests(prev => prev.map(c => {
+      if (c.id !== contestId) return c;
+      return { ...c, token: clean, password: clean };
     }));
-
-    setEditContest(ec => {
-      const updatedQs = [...(ec.questions || []), { ...addingQ, id: Date.now() }];
-      return { ...ec, questions: updatedQs, marks: updatedQs.reduce((s, q) => s + q.marks, 0) };
-    });
-
-    setAddingQ(null);
-  };
-
-  /* ── Delete a question from a contest ── */
-  const deleteQuestion = qId => {
-    setContests(cs => cs.map(c => {
-      if (c.id !== editContest.id) return c;
-      const updatedQs = c.questions.filter(q => q.id !== qId);
-      return { ...c, questions: updatedQs, marks: updatedQs.reduce((s, q) => s + q.marks, 0) };
-    }));
-    setEditContest(ec => ({
-      ...ec,
-      questions: ec.questions.filter(q => q.id !== qId)
-    }));
-  };
-
-  /* ── Token Management Handlers ── */
-  const handleRegenerateMaster = (contestId) => {
-    const c = contests.find(x => x.id === contestId);
-    const prefix = (c?.name || 'CONTEST').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
-    const newToken = `${prefix}-${randomHex(4)}-${randomHex(2)}`;
-    setContests(cs => cs.map(item => item.id === contestId ? { ...item, token: newToken, password: newToken.toLowerCase() } : item));
-    notify(`Master Access Token regenerated: ${newToken}`, 'success');
-  };
-
-  const handleSaveMaster = (contestId) => {
-    if (!customMasterToken.trim()) return;
-    const cleanToken = customMasterToken.trim().toUpperCase();
-    setContests(cs => cs.map(item => item.id === contestId ? { ...item, token: cleanToken, password: cleanToken.toLowerCase() } : item));
     setIsEditingMaster(false);
-    setCustomMasterToken('');
-    notify(`Master Access Token updated to: ${cleanToken}`, 'success');
+    notify(`Master token updated to: ${clean}`);
   };
 
-  const handleGenerateSingleUseTokens = (contestId, count) => {
-    const c = contests.find(x => x.id === contestId);
-    const prefix = (c?.name || 'TOK').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
-    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  const handleGenerateBatchTokens = (contestId, count = 10, prefix = '') => {
+    const contestObj = contests.find(c => c.id === contestId);
+    if (!contestObj) return;
 
-    const newTokens = Array.from({ length: count }, (_, i) => ({
-      id: `tok-${Date.now()}-${i}-${randomHex(3)}`,
-      code: `${prefix}-${randomHex(4)}-${randomHex(2)}`,
+    const basePrefix = prefix.trim().toUpperCase() || `${contestObj.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}`;
+    const newTokens = Array.from({ length: count }, () => ({
+      id: Date.now() + Math.random(),
+      code: `${basePrefix}-${randomHex(5)}`,
+      createdAt: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       isUsed: false,
       usedBy: null,
-      createdAt: dateStr
+      usedAt: null
     }));
 
-    setContests(cs => cs.map(item => {
-      if (item.id !== contestId) return item;
-      return {
-        ...item,
-        accessTokens: [...(item.accessTokens || []), ...newTokens]
-      };
+    setContests(prev => prev.map(c => {
+      if (c.id !== contestId) return c;
+      return { ...c, accessTokens: [...(c.accessTokens || []), ...newTokens] };
     }));
-
-    notify(`Generated ${count} single-use student access tokens!`, 'success');
+    notify(`Generated ${count} single-use tokens!`);
   };
 
-  const handleDeleteToken = (contestId, tokenId) => {
-    setContests(cs => cs.map(item => {
-      if (item.id !== contestId) return item;
-      return {
-        ...item,
-        accessTokens: (item.accessTokens || []).filter(t => t.id !== tokenId)
-      };
+  const handleRevokeToken = (contestId, tokenId) => {
+    setContests(prev => prev.map(c => {
+      if (c.id !== contestId) return c;
+      return { ...c, accessTokens: (c.accessTokens || []).filter(t => t.id !== tokenId) };
     }));
+    notify('Token revoked', 'info');
   };
 
   const handleClearUsedTokens = (contestId) => {
-    setContests(cs => cs.map(item => {
-      if (item.id !== contestId) return item;
-      return {
-        ...item,
-        accessTokens: (item.accessTokens || []).filter(t => !t.isUsed)
-      };
+    setContests(prev => prev.map(c => {
+      if (c.id !== contestId) return c;
+      return { ...c, accessTokens: (c.accessTokens || []).filter(t => !t.isUsed) };
     }));
     notify('Cleaned up used tokens', 'info');
   };
@@ -391,145 +355,289 @@ export default function AdminDashboard({ contests = [], setContests, submissions
     copyToClipboard(tokenList, `${unused.length} Unused Tokens`);
   };
 
-  const navItem = (key, label, icon) => (
-    <button onClick={() => setTab(key)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 1rem', borderRadius: '10px', border: 'none', background: tab === key ? 'rgba(99,102,241,0.15)' : 'none', color: tab === key ? '#818cf8' : '#64748b', cursor: 'pointer', fontSize: '0.875rem', fontWeight: tab === key ? 700 : 500, width: '100%', textAlign: 'left' }}>
-      {icon} {label}
-    </button>
-  );
-
-  const logoSvg = <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>;
-  const inp = style => ({ style: { ...{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '0.7rem 0.9rem', color: '#f1f5f9', fontSize: '0.875rem', outline: 'none', width: '100%', boxSizing: 'border-box' }, ...style } });
+  const navItem = (key, label, icon) => {
+    const isActive = tab === key;
+    return (
+      <button
+        onClick={() => setTab(key)}
+        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isActive
+            ? 'text-orange-500 bg-orange-500/10'
+            : 'text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]'
+        }`}
+      >
+        <span className="text-sm">{icon}</span>
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
-      {/* Sidebar */}
-      <aside style={{ width: '230px', flexShrink: 0, background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{logoSvg}</div>
-          <div><div style={{ fontWeight: 800, fontSize: '1rem' }}>CodeIT</div><div style={{ color: '#475569', fontSize: '0.7rem' }}>Admin Portal</div></div>
+    <div className="flex min-h-screen bg-[#0d0d0d] text-[#f1f1f1]">
+      {/* ── Left Sidebar (code.zone style) ── */}
+      <aside className="w-60 flex-shrink-0 bg-[#111111] border-r border-[#2a2a2a] p-4 flex flex-col justify-between">
+        <div>
+          {/* Logo Header */}
+          <div className="mb-6 pl-1 pb-4 border-b border-[#2a2a2a]">
+            <Logo size="sm" subtitle="Admin Console" />
+          </div>
+
+          {/* Navigation Items */}
+          <nav className="space-y-1">
+            {navItem('overview', 'Dashboard', '📊')}
+            {navItem('contests', 'Contests', '🏆')}
+            {navItem('analytics', 'Analytics', '📈')}
+            {navItem('tokens', 'Access Tokens', '🔑')}
+            {navItem('admins', 'Admins & Faculty', '👥')}
+            {navItem('students', 'Submissions', '📋')}
+            {tab === 'questions' && navItem('questions', editContest ? `Questions (${editContest.name.substring(0, 10)}…)` : 'Question Bank', '🗂️')}
+            {navItem('settings', 'Settings', '⚙️')}
+          </nav>
         </div>
-        {navItem('overview', 'Overview', '📊')}
-        {navItem('contests', 'Contests', '🏆')}
-        {navItem('analytics', 'Contest Analytics', '📈')}
-        {navItem('tokens', 'Access Tokens', '🔑')}
-        {navItem('admins', 'Admins & Faculty', '🛡️')}
-        {navItem('students', 'Submissions', '👥')}
-        {tab === 'questions' && navItem('questions', editContest ? `Questions: ${editContest.name.substring(0, 15)}…` : 'Questions', '❓')}
-        {navItem('settings', 'Settings', '⚙️')}
-        <div style={{ marginTop: 'auto' }}>
-          <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 1rem', borderRadius: '10px', border: 'none', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, width: '100%' }}>🚪 Logout</button>
+
+        {/* User Profile Badge at Bottom */}
+        <div className="pt-4 border-t border-[#2a2a2a]">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 font-mono font-bold flex items-center justify-center text-xs flex-shrink-0">
+                A
+              </div>
+              <div className="truncate">
+                <div className="text-xs font-bold text-white truncate">Super Admin</div>
+                <div className="text-[10px] font-mono text-gray-500 truncate">admin@gmrit.edu.in</div>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              title="Logout"
+              className="text-gray-500 hover:text-red-400 p-1.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+            >
+              🚪
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Area */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ background: 'rgba(17,24,39,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 5, flexShrink: 0 }}>
-          <h1 style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-            {tab === 'overview' && 'Dashboard Overview'}
-            {tab === 'contests' && 'Contest Management'}
-            {tab === 'analytics' && `Contest Live Dashboard: ${selectedAnalyticsContest?.name || 'Analytics'}`}
-            {tab === 'tokens' && 'Contest Access Tokens & Single-Use Codes'}
-            {tab === 'admins' && 'Platform & Contest Administrator Management'}
-            {tab === 'students' && 'Student Submissions'}
-            {tab === 'questions' && (editContest ? `Contest: ${editContest.name}` : 'Question Editor')}
-            {tab === 'settings' && 'Platform Settings'}
-          </h1>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+      {/* ── Main Canvas ── */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
+        {/* Top Header */}
+        <header className="sticky top-0 z-20 bg-[#0d0d0d]/90 backdrop-blur-md border-b border-[#2a2a2a] px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-white tracking-tight">
+              {tab === 'overview' && 'Admin Dashboard Overview'}
+              {tab === 'contests' && 'Contest Management'}
+              {tab === 'analytics' && `Live Analytics: ${selectedAnalyticsContest?.name || 'Contest'}`}
+              {tab === 'tokens' && 'Access Tokens & Single-Use Codes'}
+              {tab === 'admins' && 'Platform & Contest Administrators'}
+              {tab === 'students' && 'All Student Submissions'}
+              {tab === 'questions' && (editContest ? `Questions: ${editContest.name}` : 'Question Bank')}
+              {tab === 'settings' && 'Platform Settings'}
+            </h1>
+            <p className="text-[11px] font-mono text-gray-500">GMRIT Examination &amp; Proctoring Portal</p>
+          </div>
+
+          <div className="flex items-center gap-3">
             {tab === 'analytics' && selectedAnalyticsContest && (
               <button
                 onClick={() => handleExportContestCSV(selectedAnalyticsContest, submissions.filter(s => s.contestId === selectedAnalyticsContest.id || s.contest === selectedAnalyticsContest.name))}
-                style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
+                className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-orange-500/20"
               >
-                📥 Export CSV Report
+                <span>📥</span>
+                <span>Export CSV Report</span>
               </button>
             )}
             {tab === 'admins' && (
-              <button onClick={() => setShowAddAdminModal(true)} style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+              <button
+                onClick={() => setShowAddAdminModal(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm shadow-orange-500/20"
+              >
                 + Add Platform Admin
               </button>
             )}
-            {(tab === 'contests' || tab === 'tokens') && <button onClick={() => setShowCreate(true)} style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>+ New Contest</button>}
+            {(tab === 'contests' || tab === 'tokens') && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm shadow-orange-500/20"
+              >
+                + New Contest
+              </button>
+            )}
             {tab === 'questions' && editContest && (
-              <>
-                <button onClick={() => startAdd('mcq')} style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '10px', color: '#86efac', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>+ MCQ Question</button>
-                <button onClick={() => startAdd('code')} style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', color: '#fcd34d', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>+ Coding Question (Test Cases)</button>
-                <button onClick={() => setTab('contests')} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#94a3b8', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>← Back</button>
-              </>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => startAdd('mcq')}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500 text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  + Add MCQ
+                </button>
+                <button
+                  onClick={() => startAdd('code')}
+                  className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  + Add Coding
+                </button>
+                <button
+                  onClick={() => setTab('contests')}
+                  className="text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-gray-600 transition-colors cursor-pointer"
+                >
+                  ← Back
+                </button>
+              </div>
             )}
           </div>
         </header>
 
-        <main style={{ padding: '2rem', flex: 1 }}>
-          {/* ── OVERVIEW ── */}
+        {/* Canvas Body */}
+        <main className="p-8 flex-1 max-w-6xl w-full">
+          {/* ── OVERVIEW TAB ── */}
           {tab === 'overview' && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-                {[['👥', 'Total Students', totalStudents, '#6366f1'], ['🔥', 'Active Contests', activeContests, '#f59e0b'], ['🛡️', 'Platform Admins', admins.length, '#8b5cf6'], ['📝', 'Total Submissions', totalSubs, '#22c55e']].map(([ic, lbl, val, col]) => (
-                  <div key={lbl} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.5rem' }}>
-                    <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{ic}</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: col }}>{val}</div>
-                    <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '0.2rem', fontWeight: 500 }}>{lbl}</div>
+            <div className="space-y-6">
+              {/* Top 4 KPI Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { icon: '🔥', label: 'Active Contests', val: activeContests, color: '#f97316' },
+                  { icon: '👥', label: 'Total Students', val: totalStudents, color: '#f1f1f1' },
+                  { icon: '📝', label: 'Total Submissions', val: totalSubs, color: '#22c55e' },
+                  { icon: '🛡️', label: 'Platform Admins', val: admins.length, color: '#eab308' },
+                ].map(kpi => (
+                  <div key={kpi.label} className="bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500/40 rounded-xl p-5 transition-all duration-200">
+                    <div className="text-xl mb-2">{kpi.icon}</div>
+                    <div className="text-2xl font-bold font-mono text-white tracking-tight">{kpi.val}</div>
+                    <div className="text-[11px] font-mono uppercase tracking-wider text-gray-500 mt-1">{kpi.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#94a3b8' }}>Live Contests & Access Tokens</h2>
-                  <button onClick={() => setTab('tokens')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Manage All Tokens 🔑 →</button>
+              {/* Recent Activity Stream (code.zone style) */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-white tracking-tight">Recent Activity Stream</h3>
+                  <span className="text-[11px] font-mono text-orange-400">Live feed</span>
                 </div>
-                {contests.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.name}</span>
-                      <span style={{ color: '#64748b', fontSize: '0.78rem', marginLeft: '0.75rem' }}>{c.questions?.length || 0} questions · {c.marks} marks · {c.students || 0} submissions</span>
+
+                <div className="space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-[#111111] border border-[#2a2a2a]">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                      <span className="text-gray-200">DSA Quiz started — 43 students entered</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span onClick={() => copyToClipboard(c.token || c.password, 'Token')} title="Click to copy token" style={{ cursor: 'pointer', fontFamily: 'monospace', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', borderRadius: '8px', padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                        🔑 {c.token || c.password} 📋
-                      </span>
-                      <Badge text={c.status} />
-                      <button onClick={() => openQuestions(c)} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px', color: '#818cf8', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Questions ❓</button>
-                    </div>
+                    <span className="text-gray-500 text-[10px]">Just now</span>
                   </div>
-                ))}
+
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-[#111111] border border-[#2a2a2a]">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                      <span className="text-gray-200">Ravi Kumar (24341A0574) — fullscreen exit logged ⚠️</span>
+                    </div>
+                    <span className="text-gray-500 text-[10px]">2m ago</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-[#111111] border border-[#2a2a2a]">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="text-gray-200">Web Dev Challenge — results evaluated &amp; ready</span>
+                    </div>
+                    <span className="text-gray-500 text-[10px]">15m ago</span>
+                  </div>
+                </div>
               </div>
-            </>
+
+              {/* Live Contests Quick List */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-white tracking-tight">Live Contests &amp; Access Tokens</h3>
+                  <button
+                    onClick={() => setTab('tokens')}
+                    className="text-xs font-mono text-orange-400 hover:text-orange-300 font-semibold cursor-pointer"
+                  >
+                    Manage Tokens 🔑 →
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {contests.map(c => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-[#111111] border border-[#2a2a2a] hover:border-gray-700 transition-colors flex-wrap gap-3"
+                    >
+                      <div>
+                        <div className="text-sm font-bold text-white">{c.name}</div>
+                        <div className="text-xs font-mono text-gray-500 mt-0.5">
+                          {c.questions?.length || 0} Questions · {c.marks} Marks · {c.students || 0} Submissions
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span
+                          onClick={() => copyToClipboard(c.token || c.password, 'Token')}
+                          title="Click to copy token"
+                          className="font-mono text-xs bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500/50 text-orange-400 px-2.5 py-1 rounded cursor-pointer"
+                        >
+                          🔑 {c.token || c.password} 📋
+                        </span>
+                        <Badge text={c.status} />
+                        <button
+                          onClick={() => openQuestions(c)}
+                          className="bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500 text-gray-300 hover:text-white px-3 py-1 rounded text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          Questions 🗂️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* ── CONTESTS ── */}
+          {/* ── CONTESTS TAB ── */}
           {tab === 'contests' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="space-y-4">
               {contests.map(c => (
-                <div key={c.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1rem' }}>{c.name}</h3>
+                <div
+                  key={c.id}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500/30 rounded-xl p-6 transition-all"
+                >
+                  <div className="flex items-start justify-between flex-wrap gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <h3 className="text-base font-bold text-white">{c.name}</h3>
                         <Badge text={c.status} />
-                        <span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '20px', padding: '0.15rem 0.65rem', fontSize: '0.7rem', fontWeight: 600 }}>{c.type}</span>
+                        <span className="text-[10px] font-mono uppercase bg-[#111111] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded">
+                          {c.type}
+                        </span>
                       </div>
-                      <p style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '0.6rem' }}>{c.desc || 'No description.'}</p>
-                      <div style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span>⏱ {c.duration} min</span>
-                        <span>📊 {c.marks} marks</span>
-                        <span>❓ {c.questions?.length || 0} questions</span>
-                        <span>👥 {c.students || 0} submissions</span>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(99,102,241,0.15)', padding: '0.2rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.3)' }}>
-                          <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 700 }}>🔑 Token:</span>
-                          <code style={{ color: '#fff', fontWeight: 700, fontSize: '0.8rem' }}>{c.token || c.password}</code>
-                          <button onClick={() => copyToClipboard(c.token || c.password, 'Token')} style={{ background: 'none', border: 'none', color: '#a5b4fc', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}>📋</button>
+
+                      <p className="text-xs text-gray-400 mb-4 leading-relaxed">{c.desc || 'No description provided.'}</p>
+
+                      <div className="flex items-center gap-4 text-xs font-mono text-gray-500">
+                        <div className="flex items-center gap-1 bg-[#111111] border border-[#2a2a2a] px-2 py-1 rounded">
+                          <span className="text-orange-400 font-bold">🔑 Token:</span>
+                          <code className="text-white font-bold">{c.token || c.password}</code>
+                          <button onClick={() => copyToClipboard(c.token || c.password, 'Token')} className="text-gray-400 hover:text-white ml-1 cursor-pointer">📋</button>
                         </div>
-                        <span>🛡️ Coordinators: <strong style={{ color: '#c7d2fe' }}>{(c.admins || []).length}</strong></span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button onClick={() => { setAnalyticsContestId(c.id); setTab('analytics'); }} style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '10px', color: '#86efac', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700 }}>📊 Live Dashboard</button>
-                      <button onClick={() => { setSelectedContestAdminId(c.id); setAdminView('contest'); setTab('admins'); }} style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: '10px', color: '#c4b5fd', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>🛡️ Admins</button>
-                      <button onClick={() => { setTokenContestId(c.id); setTab('tokens'); }} style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', color: '#a5b4fc', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>🔑 Tokens</button>
-                      <button onClick={() => openQuestions(c)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#e2e8f0', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>Questions ({c.questions?.length || 0})</button>
-                      <button onClick={() => toggleStatus(c.id)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#94a3b8', padding: '0.5rem 0.8rem', cursor: 'pointer', fontSize: '0.82rem' }}>Status</button>
-                      <button onClick={() => deleteContest(c.id)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', color: '#f87171', padding: '0.5rem 0.8rem', cursor: 'pointer', fontSize: '0.82rem' }}>Delete</button>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => { setAnalyticsContestId(c.id); setTab('analytics'); }} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                        📊 Live Dashboard
+                      </button>
+                      <button onClick={() => { setSelectedContestAdminId(c.id); setAdminView('contest'); setTab('admins'); }} className="bg-[#111111] border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                        🛡️ Admins
+                      </button>
+                      <button onClick={() => { setTokenContestId(c.id); setTab('tokens'); }} className="bg-[#111111] border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                        🔑 Tokens
+                      </button>
+                      <button onClick={() => openQuestions(c)} className="bg-[#111111] border border-[#2a2a2a] hover:border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                        Questions ({c.questions?.length || 0})
+                      </button>
+                      <button onClick={() => toggleStatus(c.id)} className="bg-[#111111] border border-[#2a2a2a] text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer">
+                        Status
+                      </button>
+                      <button onClick={() => deleteContest(c.id)} className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>

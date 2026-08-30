@@ -1,7 +1,57 @@
+@import "tailwindcss";
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; }
-input, select, textarea, button { font-family: inherit; }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+@layer base {
+  :root {
+    --bg-base: #0d0d0d;
+    --bg-surface: #1a1a1a;
+    --bg-sidebar: #111111;
+    --border-subtle: #2a2a2a;
+    --accent-orange: #f97316;
+    --accent-hover: #ea6a0a;
+    --text-primary: #f1f1f1;
+    --text-muted: #6b7280;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #0d0d0d;
+    color: #f1f1f1;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Dev Grid Background */
+  .dev-grid-bg {
+    background-color: #0d0d0d;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #111111;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #f97316;
+  }
+}
