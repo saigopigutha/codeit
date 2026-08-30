@@ -239,6 +239,18 @@ export default function AdminDashboard({
     notify('Token revoked', 'info');
   };
 
+  const handleClearAllTokens = () => {
+    if (window.confirm(`Delete all single-use tokens for ${activeContest.name}?`)) {
+      setContests(prev =>
+        prev.map(c => {
+          if (c.id !== activeContest.id) return c;
+          return { ...c, accessTokens: [] };
+        })
+      );
+      notify('All single-use tokens cleared!', 'info');
+    }
+  };
+
   const handleSaveMasterToken = () => {
     const clean = masterTokenInput.trim().toUpperCase();
     if (!clean) return;
@@ -1053,6 +1065,14 @@ export default function AdminDashboard({
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-white">Single-Use Tokens ({activeContest.accessTokens?.length || 0})</h3>
+                  {(activeContest.accessTokens || []).length > 0 && (
+                    <button
+                      onClick={handleClearAllTokens}
+                      className="text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      🗑️ Clear All Tokens
+                    </button>
+                  )}
                 </div>
 
                 <table className="w-full text-xs border-collapse">

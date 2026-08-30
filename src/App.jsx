@@ -18,11 +18,7 @@ const DEFAULT_CONTESTS = [
     status: 'Open',
     token: 'ISTE-2024-CODE',
     password: 'iste2024',
-    accessTokens: [
-      { id: 'tok-1', code: 'ISTE-STUDENT-01', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
-      { id: 'tok-2', code: 'ISTE-STUDENT-02', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
-      { id: 'tok-3', code: 'ISTE-STUDENT-03', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' }
-    ],
+    accessTokens: [],
     students: 0,
     questions: [
       {
@@ -138,10 +134,7 @@ Constraints:
     status: 'Open',
     token: 'PY-2024-BASIC',
     password: 'python2024',
-    accessTokens: [
-      { id: 'py-1', code: 'PY-BATCH-01', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
-      { id: 'py-2', code: 'PY-BATCH-02', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' }
-    ],
+    accessTokens: [],
     students: 0,
     questions: [
       {
