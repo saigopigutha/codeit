@@ -605,13 +605,13 @@ export default function AdminDashboard({
           {/* ════════════════ TAB 1: OVERVIEW ════════════════ */}
           {tab === 'overview' && (
             <div className="space-y-6">
-              {/* 4 KPI Metric Cards */}
+              {/* 4 KPI Metric Cards (100% Organic Data) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { val: totalStudentsCount || 128, lbl: 'Students' },
-                  { val: activeContestsCount || 3, lbl: 'Active Contests' },
-                  { val: admins.length || 6, lbl: 'Admins' },
-                  { val: totalSubsCount || 891, lbl: 'Submissions' }
+                  { val: totalStudentsCount, lbl: 'Students' },
+                  { val: activeContestsCount, lbl: 'Active Contests' },
+                  { val: admins.length, lbl: 'Admins' },
+                  { val: totalSubsCount, lbl: 'Submissions' }
                 ].map(card => (
                   <div key={card.lbl} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 hover:border-orange-500/40 transition-all">
                     <div className="text-3xl font-bold text-white font-mono">{card.val}</div>
