@@ -187,11 +187,27 @@ export default function AdminDashboard({
   };
 
   // Delete Contest
-  const handleDeleteContest = id => {
-    if (window.confirm('Are you sure you want to delete this contest permanently?')) {
-      setContests(prev => prev.filter(c => c.id !== id));
-      notify('Contest deleted', 'info');
+  const handleDeleteContest = (id, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
     }
+    const cleanId = String(id);
+    setContests(prev => {
+      const updated = prev.filter(c => String(c.id) !== cleanId);
+      try {
+        localStorage.setItem('codeit_contests', JSON.stringify(updated));
+      } catch (err) {}
+      return updated;
+    });
+    setSelectedContestId(prev => {
+      if (String(prev) === cleanId) {
+        const remaining = contests.filter(c => String(c.id) !== cleanId);
+        return remaining[0]?.id || null;
+      }
+      return prev;
+    });
+    notify('Contest deleted permanently', 'info');
   };
 
   // Toggle Contest Status
@@ -780,8 +796,8 @@ export default function AdminDashboard({
                             Toggle Status
                           </button>
                           <button
-                            onClick={() => handleDeleteContest(c.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                            onClick={(e) => handleDeleteContest(c.id, e)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                           >
                             🗑️ Delete
                           </button>
