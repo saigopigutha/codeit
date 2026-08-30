@@ -44,8 +44,14 @@ export default function AdminDashboard({ contests = [], setContests, submissions
   const [selectedAdminToAssign, setSelectedAdminToAssign] = useState('');
   const [selectedSubmissionModal, setSelectedSubmissionModal] = useState(null);
 
+  // Contest-Specific Dashboard & Analytics State
+  const [analyticsContestId, setAnalyticsContestId] = useState(() => contests[0]?.id || 1);
+  const [analyticsSearch, setAnalyticsSearch] = useState('');
+  const [analyticsBranch, setAnalyticsBranch] = useState('All');
+
   const selectedTokenContest = contests.find(c => c.id === tokenContestId) || contests[0];
   const selectedAdminContest = contests.find(c => c.id === selectedContestAdminId) || contests[0];
+  const selectedAnalyticsContest = contests.find(c => c.id === analyticsContestId) || contests[0];
 
   const totalStudents = new Set(submissions.map(s => s.jntuNo)).size;
   const activeContests = contests.filter(c => c.status === 'Open').length;
@@ -59,6 +65,73 @@ export default function AdminDashboard({ contests = [], setContests, submissions
   const copyToClipboard = (text, label = 'Copied') => {
     navigator.clipboard.writeText(text);
     notify(`${label} copied to clipboard!`, 'success');
+  };
+
+  // Helper to calculate questions solved for a student submission
+  const getSolvedCount = (sub, contest) => {
+    if (!contest || !contest.questions) return { solved: 0, total: 0, mcqSolved: 0, codeSolved: 0 };
+    let mcqSolved = 0;
+    let codeSolved = 0;
+
+    (contest.questions || []).forEach(q => {
+      if (q.type === 'mcq') {
+        if (sub.answers && sub.answers[q.id] === q.correct) {
+          mcqSolved++;
+        }
+      } else if (q.type === 'code') {
+        const codeScore = sub.codingScores?.[q.id]?.score;
+        if (codeScore !== undefined && codeScore > 0) {
+          codeSolved++;
+        } else if (sub.code && sub.code[q.id] && sub.code[q.id].trim().length > 15) {
+          codeSolved++;
+        }
+      }
+    });
+
+    return {
+      solved: mcqSolved + codeSolved,
+      total: contest.questions.length,
+      mcqSolved,
+      codeSolved
+    };
+  };
+
+  // Export Contest Analytics to CSV
+  const handleExportContestCSV = (contest, contestSubs) => {
+    if (!contestSubs || contestSubs.length === 0) {
+      notify('No submissions available to export for this contest.', 'info');
+      return;
+    }
+    const headers = ['Rank', 'JNTU No', 'Student Name', 'Branch', 'Score', 'Total Marks', 'Percentage', 'Questions Solved', 'Time Taken', 'Refreshes', 'Warnings', 'Submitted At'];
+    const rows = contestSubs.map((s, idx) => {
+      const qSolved = getSolvedCount(s, contest);
+      const timeTakenMin = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
+      const pct = s.percentage !== undefined ? s.percentage : Math.round((s.score / s.total) * 100);
+      return [
+        idx + 1,
+        `"${s.jntuNo || ''}"`,
+        `"${s.name || ''}"`,
+        `"${s.branch || ''}"`,
+        s.score,
+        s.total,
+        `"${pct}%"`,
+        `"${qSolved.solved}/${qSolved.total}"`,
+        `"${timeTakenMin}"`,
+        s.refreshes || 0,
+        s.warnings || 0,
+        `"${s.submittedAt || s.time || ''}"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(contest?.name || 'Contest').replace(/[^a-zA-Z0-9]/g, '_')}_Results.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify('Contest results exported to CSV successfully!', 'success');
   };
 
   /* ── Create contest ── */
@@ -337,6 +410,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
         </div>
         {navItem('overview', 'Overview', '📊')}
         {navItem('contests', 'Contests', '🏆')}
+        {navItem('analytics', 'Contest Analytics', '📈')}
         {navItem('tokens', 'Access Tokens', '🔑')}
         {navItem('admins', 'Admins & Faculty', '🛡️')}
         {navItem('students', 'Submissions', '👥')}
@@ -353,6 +427,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
           <h1 style={{ fontSize: '1.1rem', fontWeight: 700 }}>
             {tab === 'overview' && 'Dashboard Overview'}
             {tab === 'contests' && 'Contest Management'}
+            {tab === 'analytics' && `Contest Live Dashboard: ${selectedAnalyticsContest?.name || 'Analytics'}`}
             {tab === 'tokens' && 'Contest Access Tokens & Single-Use Codes'}
             {tab === 'admins' && 'Platform & Contest Administrator Management'}
             {tab === 'students' && 'Student Submissions'}
@@ -360,6 +435,14 @@ export default function AdminDashboard({ contests = [], setContests, submissions
             {tab === 'settings' && 'Platform Settings'}
           </h1>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
+            {tab === 'analytics' && selectedAnalyticsContest && (
+              <button
+                onClick={() => handleExportContestCSV(selectedAnalyticsContest, submissions.filter(s => s.contestId === selectedAnalyticsContest.id || s.contest === selectedAnalyticsContest.name))}
+                style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
+              >
+                📥 Export CSV Report
+              </button>
+            )}
             {tab === 'admins' && (
               <button onClick={() => setShowAddAdminModal(true)} style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
                 + Add Platform Admin
@@ -441,6 +524,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button onClick={() => { setAnalyticsContestId(c.id); setTab('analytics'); }} style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '10px', color: '#86efac', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700 }}>📊 Live Dashboard</button>
                       <button onClick={() => { setSelectedContestAdminId(c.id); setAdminView('contest'); setTab('admins'); }} style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: '10px', color: '#c4b5fd', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>🛡️ Admins</button>
                       <button onClick={() => { setTokenContestId(c.id); setTab('tokens'); }} style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', color: '#a5b4fc', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>🔑 Tokens</button>
                       <button onClick={() => openQuestions(c)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#e2e8f0', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>Questions ({c.questions?.length || 0})</button>
@@ -452,6 +536,359 @@ export default function AdminDashboard({ contests = [], setContests, submissions
               ))}
             </div>
           )}
+
+          {/* ── CONTEST LIVE DASHBOARD & STUDENT ANALYTICS ── */}
+          {tab === 'analytics' && (() => {
+            const currentContest = selectedAnalyticsContest || contests[0];
+            const contestSubs = submissions.filter(s => s.contestId === currentContest?.id || s.contest === currentContest?.name);
+
+            const filteredSubs = contestSubs.filter(s => {
+              const matchSearch = !analyticsSearch || 
+                (s.name || '').toLowerCase().includes(analyticsSearch.toLowerCase()) || 
+                (s.jntuNo || '').toLowerCase().includes(analyticsSearch.toLowerCase());
+              const matchBranch = analyticsBranch === 'All' || (s.branch || '').toUpperCase() === analyticsBranch.toUpperCase();
+              return matchSearch && matchBranch;
+            });
+
+            // Sort by score desc, then timeTaken asc
+            const sortedRankedSubs = [...filteredSubs].sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return (a.timeTaken || 0) - (b.timeTaken || 0);
+            });
+
+            const totalSubsCount = contestSubs.length;
+            const totalContestMarks = currentContest?.marks || 100;
+            const avgScoreVal = totalSubsCount > 0 ? (contestSubs.reduce((acc, s) => acc + s.score, 0) / totalSubsCount).toFixed(1) : '0';
+            const avgPctVal = totalContestMarks > 0 ? Math.round((Number(avgScoreVal) / totalContestMarks) * 100) : 0;
+            const highestScoreVal = totalSubsCount > 0 ? Math.max(...contestSubs.map(s => s.score)) : 0;
+            const topStudentObj = contestSubs.find(s => s.score === highestScoreVal);
+            const passingCount = contestSubs.filter(s => (s.percentage !== undefined ? s.percentage : (s.score / s.total) * 100) >= 50).length;
+            const passRateVal = totalSubsCount > 0 ? Math.round((passingCount / totalSubsCount) * 100) : 0;
+            const avgTimeSec = totalSubsCount > 0 ? Math.round(contestSubs.reduce((acc, s) => acc + (s.timeTaken || 0), 0) / totalSubsCount) : 0;
+            const avgTimeFmt = `${Math.floor(avgTimeSec / 60)}m ${avgTimeSec % 60}s`;
+
+            const branchesList = ['All', ...Array.from(new Set(contestSubs.map(s => s.branch).filter(Boolean)))];
+
+            // Question success rate analytics
+            const questionsAnalytics = (currentContest?.questions || []).map((q, qIdx) => {
+              let solvedCount = 0;
+              let totalScoreAwarded = 0;
+
+              contestSubs.forEach(s => {
+                if (q.type === 'mcq') {
+                  if (s.answers && s.answers[q.id] === q.correct) {
+                    solvedCount++;
+                    totalScoreAwarded += q.marks;
+                  }
+                } else {
+                  const qScore = s.codingScores?.[q.id]?.score;
+                  if (qScore !== undefined && qScore > 0) {
+                    solvedCount++;
+                    totalScoreAwarded += qScore;
+                  } else if (s.code && s.code[q.id] && s.code[q.id].trim().length > 15) {
+                    solvedCount++;
+                    totalScoreAwarded += q.marks;
+                  }
+                }
+              });
+
+              const rate = totalSubsCount > 0 ? Math.round((solvedCount / totalSubsCount) * 100) : 0;
+              const avgQScore = totalSubsCount > 0 ? (totalScoreAwarded / totalSubsCount).toFixed(1) : '0';
+
+              return {
+                ...q,
+                index: qIdx + 1,
+                solvedCount,
+                successRate: rate,
+                avgQScore
+              };
+            });
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                {/* Top Contest Selector & Information Card */}
+                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <label style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Select Contest:
+                      </label>
+                      <select
+                        value={analyticsContestId}
+                        onChange={e => {
+                          setAnalyticsContestId(Number(e.target.value));
+                          setAnalyticsSearch('');
+                          setAnalyticsBranch('All');
+                        }}
+                        style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '0.65rem 1rem', color: '#f8fafc', fontSize: '0.95rem', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
+                      >
+                        {contests.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.status})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                      <button
+                        onClick={() => handleExportContestCSV(currentContest, contestSubs)}
+                        style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                      >
+                        📥 Export CSV
+                      </button>
+                      <button
+                        onClick={() => { setTokenContestId(currentContest?.id); setTab('tokens'); }}
+                        style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', color: '#a5b4fc', padding: '0.55rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                      >
+                        🔑 Manage Tokens
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Contest Quick Specs */}
+                  {currentContest && (
+                    <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.9rem 1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.82rem', color: '#94a3b8' }}>
+                      <span>Status: <Badge text={currentContest.status} /></span>
+                      <span>Type: <strong style={{ color: '#cbd5e1' }}>{currentContest.type}</strong></span>
+                      <span>Duration: <strong style={{ color: '#cbd5e1' }}>{currentContest.duration} Mins</strong></span>
+                      <span>Total Marks: <strong style={{ color: '#86efac' }}>{currentContest.marks} Marks</strong></span>
+                      <span>Questions: <strong style={{ color: '#818cf8' }}>{currentContest.questions?.length || 0}</strong></span>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>Master Token:</span>
+                        <code style={{ background: 'rgba(99,102,241,0.15)', color: '#c7d2fe', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 700 }}>
+                          {currentContest.token || currentContest.password}
+                        </code>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5 Executive KPI Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1.25rem' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.4rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>🎓</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#818cf8' }}>{totalSubsCount}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
+                      Completed Tests
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.4rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>📊</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#38bdf8' }}>
+                      {avgScoreVal} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>/ {totalContestMarks} ({avgPctVal}%)</span>
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
+                      Average Score
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.4rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>🏆</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fcd34d' }}>
+                      {highestScoreVal} <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>({topStudentObj?.name ? topStudentObj.name.split(' ')[0] : 'N/A'})</span>
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
+                      Highest Score (Rank 1)
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.4rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>🎯</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: passRateVal >= 50 ? '#86efac' : '#f87171' }}>
+                      {passRateVal}%
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
+                      Pass Rate (Score ≥ 50%)
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.4rem' }}>
+                    <div style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>⏱️</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#c084fc' }}>
+                      {avgTimeFmt}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
+                      Avg. Completion Time
+                    </div>
+                  </div>
+                </div>
+
+                {/* Question-by-Question Solved Matrix / Success Rate */}
+                {questionsAnalytics.length > 0 && (
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '1.75rem' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.35rem', color: '#f1f5f9' }}>
+                      🧩 Question-by-Question Success & Solved Rate
+                    </h3>
+                    <p style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+                      See how many students successfully solved each MCQ and Coding problem in this contest.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                      {questionsAnalytics.map(q => (
+                        <div key={q.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '14px', padding: '1.2rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                Q{q.index}
+                              </span>
+                              <span style={{ background: q.type === 'mcq' ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: q.type === 'mcq' ? '#86efac' : '#fcd34d', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.7rem', fontWeight: 600 }}>
+                                {q.type === 'mcq' ? 'MCQ' : 'Coding'}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>{q.marks} Marks</span>
+                          </div>
+
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0', marginBottom: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {q.type === 'code' ? (q.title || 'Coding Problem') : (q.text || 'MCQ Question')}
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', marginBottom: '0.4rem' }}>
+                            <span style={{ color: '#94a3b8' }}>Solved by:</span>
+                            <span style={{ fontWeight: 700, color: q.successRate >= 60 ? '#86efac' : q.successRate >= 40 ? '#fcd34d' : '#f87171' }}>
+                              {q.solvedCount} / {totalSubsCount} Students ({q.successRate}%)
+                            </span>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div style={{ height: '6px', width: '100%', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${q.successRate}%`,
+                                background: q.successRate >= 60 ? 'linear-gradient(90deg,#22c55e,#86efac)' : q.successRate >= 40 ? 'linear-gradient(90deg,#f59e0b,#fcd34d)' : 'linear-gradient(90deg,#ef4444,#f87171)',
+                                borderRadius: '3px',
+                                transition: 'width 0.3s ease'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Student Leaderboard & Solved Breakdown Table */}
+                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', overflow: 'hidden' }}>
+                  {/* Table Header & Controls */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f1f5f9' }}>
+                        🏆 Student Submissions & Solved Breakdown Leaderboard
+                      </h3>
+                      <p style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                        Ranked list of students who submitted this contest with exact questions solved count.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        value={analyticsSearch}
+                        onChange={e => setAnalyticsSearch(e.target.value)}
+                        placeholder="Search student or JNTU No..."
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.55rem 0.9rem', color: '#f8fafc', fontSize: '0.82rem', outline: 'none', width: '220px' }}
+                      />
+
+                      <select
+                        value={analyticsBranch}
+                        onChange={e => setAnalyticsBranch(e.target.value)}
+                        style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.55rem 0.85rem', color: '#f8fafc', fontSize: '0.82rem', outline: 'none', cursor: 'pointer' }}
+                      >
+                        {branchesList.map(b => (
+                          <option key={b} value={b}>
+                            {b === 'All' ? 'All Branches' : b}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Leaderboard Table Content */}
+                  {sortedRankedSubs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: '#64748b' }}>
+                      <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📭</div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>No Submissions Match Filters</h3>
+                      <p style={{ fontSize: '0.85rem', color: '#475569', maxWidth: '400px', margin: '0 auto' }}>
+                        {totalSubsCount === 0 ? 'No students have completed this contest yet.' : 'Try adjusting your search query or branch filter.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            {['Rank', 'JNTU No.', 'Student Name', 'Branch', 'Questions Solved', 'Score & %', 'Time Taken', 'Refreshes 🔄', 'Submitted At', 'Action'].map(h => (
+                              <th key={h} style={{ padding: '1rem 1.1rem', textAlign: 'left', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedRankedSubs.map((s, i) => {
+                            const rank = i + 1;
+                            const rankBadge = rank === 1 ? '🥇 1' : rank === 2 ? '🥈 2' : rank === 3 ? '🥉 3' : `#${rank}`;
+                            const solvedInfo = getSolvedCount(s, currentContest);
+                            const timeTakenMin = s.timeTaken ? `${Math.floor(s.timeTaken / 60)}m ${s.timeTaken % 60}s` : '—';
+                            const refreshCount = s.refreshes !== undefined ? s.refreshes : 0;
+                            const pct = s.percentage !== undefined ? s.percentage : Math.round((s.score / s.total) * 100);
+
+                            return (
+                              <tr key={s.id || `${s.jntuNo}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                                <td style={{ padding: '1rem 1.1rem', fontWeight: 800, fontSize: '0.88rem', color: rank === 1 ? '#fcd34d' : rank === 2 ? '#e2e8f0' : rank === 3 ? '#fb923c' : '#64748b' }}>
+                                  {rankBadge}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem', fontFamily: 'monospace', color: '#818cf8', fontSize: '0.875rem', fontWeight: 700 }}>
+                                  {s.jntuNo}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem', fontWeight: 600, fontSize: '0.9rem', color: '#f8fafc' }}>
+                                  {s.name}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                                  {s.branch}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: solvedInfo.solved === solvedInfo.total && solvedInfo.total > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.12)', border: `1px solid ${solvedInfo.solved === solvedInfo.total && solvedInfo.total > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.25)'}`, borderRadius: '12px', padding: '0.25rem 0.65rem' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: solvedInfo.solved === solvedInfo.total && solvedInfo.total > 0 ? '#86efac' : '#a5b4fc' }}>
+                                      {solvedInfo.solved} / {solvedInfo.total} Solved
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem' }}>
+                                  <span style={{ fontWeight: 800, color: '#f1f5f9', fontSize: '0.92rem' }}>{s.score} / {s.total}</span>
+                                  <span style={{ marginLeft: '0.5rem', color: pct >= 75 ? '#86efac' : pct >= 50 ? '#fcd34d' : '#f87171', fontSize: '0.78rem', fontWeight: 700 }}>
+                                    ({pct}%)
+                                  </span>
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem', color: '#38bdf8', fontSize: '0.82rem', fontFamily: 'monospace', fontWeight: 600 }}>
+                                  {timeTakenMin}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem' }}>
+                                  <span style={{ background: refreshCount > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.12)', color: refreshCount > 0 ? '#fcd34d' : '#86efac', border: `1px solid ${refreshCount > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.25)'}`, borderRadius: '12px', padding: '0.2rem 0.6rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                                    {refreshCount} {refreshCount === 1 ? 'Refresh' : 'Refreshes'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
+                                  {s.submittedAt || s.time || '—'}
+                                </td>
+                                <td style={{ padding: '1rem 1.1rem' }}>
+                                  <button
+                                    onClick={() => setSelectedSubmissionModal(s)}
+                                    style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#a5b4fc', padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}
+                                  >
+                                    View Log 👁️
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── ADMINS & FACULTY MANAGEMENT ── */}
           {tab === 'admins' && (
@@ -471,7 +908,6 @@ export default function AdminDashboard({ contests = [], setContests, submissions
                   🏆 Contest-Specific Coordinators
                 </button>
               </div>
-
               {/* View 1: Global Platform Administrators */}
               {adminView === 'platform' && (
                 <>
