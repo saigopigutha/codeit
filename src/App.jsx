@@ -16,7 +16,13 @@ const DEFAULT_CONTESTS = [
     marks: 100,
     type: 'Coding',
     status: 'Open',
+    token: 'ISTE-2024-CODE',
     password: 'iste2024',
+    accessTokens: [
+      { id: 'tok-1', code: 'ISTE-STUDENT-01', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
+      { id: 'tok-2', code: 'ISTE-STUDENT-02', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
+      { id: 'tok-3', code: 'ISTE-STUDENT-03', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' }
+    ],
     students: 0,
     questions: [
       {
@@ -102,7 +108,9 @@ Constraints:
     marks: 50,
     type: 'MCQ',
     status: 'Upcoming',
+    token: 'DSA-2024-EXAM',
     password: 'dsa2024',
+    accessTokens: [],
     students: 0,
     questions: []
   },
@@ -114,7 +122,9 @@ Constraints:
     marks: 150,
     type: 'Coding',
     status: 'Upcoming',
+    token: 'WEB-2024-HACK',
     password: 'web2024',
+    accessTokens: [],
     students: 0,
     questions: []
   },
@@ -126,7 +136,12 @@ Constraints:
     marks: 50,
     type: 'Coding',
     status: 'Open',
+    token: 'PY-2024-BASIC',
     password: 'python2024',
+    accessTokens: [
+      { id: 'py-1', code: 'PY-BATCH-01', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' },
+      { id: 'py-2', code: 'PY-BATCH-02', isUsed: false, usedBy: null, createdAt: '30 Aug 2026' }
+    ],
     students: 0,
     questions: [
       {
@@ -194,10 +209,11 @@ export default function App() {
       const saved = localStorage.getItem('codeit_contests');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Sync student count with real submissions
         const savedSubs = JSON.parse(localStorage.getItem('codeit_submissions') || '[]');
         return parsed.map(c => ({
           ...c,
+          token: c.token || (c.password ? c.password.toUpperCase() + '-TOKEN' : `CONTEST-${c.id}-TOKEN`),
+          accessTokens: c.accessTokens || [],
           students: savedSubs.filter(s => s.contestId === c.id).length
         }));
       }
@@ -240,6 +256,50 @@ export default function App() {
     localStorage.removeItem('codeit_selected_contest');
     setPage('login');
     showToast('Logged out successfully', 'success');
+  };
+
+  const handleEnterContestWithToken = (contest, enteredCode) => {
+    const codeClean = (enteredCode || '').trim().toUpperCase();
+    const pwClean = (enteredCode || '').trim();
+
+    // Check master token or password
+    const isMasterToken = (contest.token && contest.token.toUpperCase() === codeClean) ||
+                          (contest.password && contest.password === pwClean);
+
+    // Check single-use tokens
+    const singleUseMatch = (contest.accessTokens || []).find(
+      t => t.code.toUpperCase() === codeClean
+    );
+
+    if (singleUseMatch) {
+      if (singleUseMatch.isUsed && singleUseMatch.usedBy !== student?.jntuNo) {
+        return { success: false, error: `This access token was already redeemed by ${singleUseMatch.usedBy}.` };
+      }
+
+      // Mark token as used
+      setContests(prev => prev.map(c => {
+        if (c.id !== contest.id) return c;
+        const updatedTokens = (c.accessTokens || []).map(t => {
+          if (t.id === singleUseMatch.id) {
+            return { ...t, isUsed: true, usedBy: student?.jntuNo, usedAt: new Date().toLocaleTimeString() };
+          }
+          return t;
+        });
+        return { ...c, accessTokens: updatedTokens };
+      }));
+
+      showToast(`Token verified! Welcome to ${contest.name}`, 'success');
+      nav('test', { contest });
+      return { success: true };
+    }
+
+    if (isMasterToken) {
+      showToast(`Access granted to ${contest.name}`, 'success');
+      nav('test', { contest });
+      return { success: true };
+    }
+
+    return { success: false, error: 'Invalid access token. Please check the code with your instructor.' };
   };
 
   const handleTestFinish = (result) => {
@@ -300,11 +360,11 @@ export default function App() {
   return (
     <div>
       {page === 'login' && <StudentLogin onLogin={s => { showToast(`Welcome, ${s.name}!`, 'success'); nav('contests', { student: s }); }} onAdmin={() => nav('adminLogin')} />}
-      {page === 'contests' && <ContestList contests={contests} student={student} onEnter={c => nav('test', { contest: c })} onLogout={handleLogout} />}
+      {page === 'contests' && <ContestList contests={contests} student={student} onEnterWithToken={handleEnterContestWithToken} onLogout={handleLogout} />}
       {page === 'test' && <TestInterface student={student} contest={selectedContest} onFinish={handleTestFinish} />}
       {page === 'results' && <ResultsPage student={student} contest={selectedContest} result={testResult} onBack={() => nav('contests')} />}
       {page === 'adminLogin' && <AdminLogin onLogin={() => { showToast('Welcome to Admin Portal', 'success'); nav('adminDash'); }} onBack={() => nav('login')} />}
-      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
+      {page === 'adminDash' && <AdminDashboard contests={contests} setContests={setContests} submissions={submissions} setSubmissions={setSubmissions} showToast={showToast} onLogout={() => { showToast('Admin logged out', 'info'); nav('login'); }} />}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

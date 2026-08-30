@@ -19,29 +19,60 @@ const emptyCode = () => ({
   ]
 });
 
-export default function AdminDashboard({ contests = [], setContests, submissions = [], setSubmissions, onLogout }) {
+const randomHex = len => Math.random().toString(36).substring(2, 2 + len).toUpperCase();
+
+export default function AdminDashboard({ contests = [], setContests, submissions = [], setSubmissions, showToast, onLogout }) {
   const [tab, setTab] = useState('overview');
   // Create contest modal
   const [showCreate, setShowCreate] = useState(false);
-  const [newC, setNewC] = useState({ name: '', desc: '', duration: 60, type: 'Mixed', password: '', status: 'Upcoming' });
+  const [newC, setNewC] = useState({ name: '', desc: '', duration: 60, type: 'Mixed', token: '', password: '', status: 'Upcoming' });
   // Question management panel
   const [editContest, setEditContest] = useState(null);
   const [addingQ, setAddingQ] = useState(null); // null | MCQ-draft | code-draft
   const [addType, setAddType] = useState('mcq');
 
+  // Token management state
+  const [tokenContestId, setTokenContestId] = useState(() => contests[0]?.id || 1);
+  const [customMasterToken, setCustomMasterToken] = useState('');
+  const [isEditingMaster, setIsEditingMaster] = useState(false);
+
+  const selectedTokenContest = contests.find(c => c.id === tokenContestId) || contests[0];
+
   const totalStudents = new Set(submissions.map(s => s.jntuNo)).size;
   const activeContests = contests.filter(c => c.status === 'Open').length;
   const totalSubs = submissions.length;
 
+  const notify = (msg, type = 'success') => {
+    if (showToast) showToast(msg, type);
+    else alert(msg);
+  };
+
+  const copyToClipboard = (text, label = 'Copied') => {
+    navigator.clipboard.writeText(text);
+    notify(`${label} copied to clipboard!`, 'success');
+  };
+
   /* ── Create contest ── */
   const handleCreate = e => {
     e.preventDefault();
-    const nc = { ...newC, id: Date.now(), students: 0, questions: [], marks: 0 };
+    const prefix = (newC.name || 'CONTEST').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
+    const generatedToken = newC.token?.trim() || `${prefix}-${randomHex(4)}-CODE`;
+    const nc = {
+      ...newC,
+      id: Date.now(),
+      token: generatedToken,
+      password: newC.password || generatedToken.toLowerCase(),
+      accessTokens: [],
+      students: 0,
+      questions: [],
+      marks: 0
+    };
     setContests(cs => [...cs, nc]);
     setEditContest(nc);
     setShowCreate(false);
-    setNewC({ name: '', desc: '', duration: 60, type: 'Mixed', password: '', status: 'Upcoming' });
+    setNewC({ name: '', desc: '', duration: 60, type: 'Mixed', token: '', password: '', status: 'Upcoming' });
     setTab('questions');
+    notify('Contest created successfully with access token!', 'success');
   };
 
   /* ── Delete contest ── */
@@ -138,6 +169,79 @@ export default function AdminDashboard({ contests = [], setContests, submissions
     }));
   };
 
+  /* ── Token Management Handlers ── */
+  const handleRegenerateMaster = (contestId) => {
+    const c = contests.find(x => x.id === contestId);
+    const prefix = (c?.name || 'CONTEST').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
+    const newToken = `${prefix}-${randomHex(4)}-${randomHex(2)}`;
+    setContests(cs => cs.map(item => item.id === contestId ? { ...item, token: newToken, password: newToken.toLowerCase() } : item));
+    notify(`Master Access Token regenerated: ${newToken}`, 'success');
+  };
+
+  const handleSaveMaster = (contestId) => {
+    if (!customMasterToken.trim()) return;
+    const cleanToken = customMasterToken.trim().toUpperCase();
+    setContests(cs => cs.map(item => item.id === contestId ? { ...item, token: cleanToken, password: cleanToken.toLowerCase() } : item));
+    setIsEditingMaster(false);
+    setCustomMasterToken('');
+    notify(`Master Access Token updated to: ${cleanToken}`, 'success');
+  };
+
+  const handleGenerateSingleUseTokens = (contestId, count) => {
+    const c = contests.find(x => x.id === contestId);
+    const prefix = (c?.name || 'TOK').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+    const newTokens = Array.from({ length: count }, (_, i) => ({
+      id: `tok-${Date.now()}-${i}-${randomHex(3)}`,
+      code: `${prefix}-${randomHex(4)}-${randomHex(2)}`,
+      isUsed: false,
+      usedBy: null,
+      createdAt: dateStr
+    }));
+
+    setContests(cs => cs.map(item => {
+      if (item.id !== contestId) return item;
+      return {
+        ...item,
+        accessTokens: [...(item.accessTokens || []), ...newTokens]
+      };
+    }));
+
+    notify(`Generated ${count} single-use student access tokens!`, 'success');
+  };
+
+  const handleDeleteToken = (contestId, tokenId) => {
+    setContests(cs => cs.map(item => {
+      if (item.id !== contestId) return item;
+      return {
+        ...item,
+        accessTokens: (item.accessTokens || []).filter(t => t.id !== tokenId)
+      };
+    }));
+  };
+
+  const handleClearUsedTokens = (contestId) => {
+    setContests(cs => cs.map(item => {
+      if (item.id !== contestId) return item;
+      return {
+        ...item,
+        accessTokens: (item.accessTokens || []).filter(t => !t.isUsed)
+      };
+    }));
+    notify('Cleaned up used tokens', 'info');
+  };
+
+  const handleCopyAllUnusedTokens = (contest) => {
+    const unused = (contest?.accessTokens || []).filter(t => !t.isUsed);
+    if (unused.length === 0) {
+      notify('No unused tokens available to copy.', 'info');
+      return;
+    }
+    const tokenList = unused.map((t, idx) => `${idx + 1}. ${t.code}`).join('\n');
+    copyToClipboard(tokenList, `${unused.length} Unused Tokens`);
+  };
+
   const navItem = (key, label, icon) => (
     <button onClick={() => setTab(key)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 1rem', borderRadius: '10px', border: 'none', background: tab === key ? 'rgba(99,102,241,0.15)' : 'none', color: tab === key ? '#818cf8' : '#64748b', cursor: 'pointer', fontSize: '0.875rem', fontWeight: tab === key ? 700 : 500, width: '100%', textAlign: 'left' }}>
       {icon} {label}
@@ -150,15 +254,16 @@ export default function AdminDashboard({ contests = [], setContests, submissions
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
       {/* Sidebar */}
-      <aside style={{ width: '225px', flexShrink: 0, background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      <aside style={{ width: '230px', flexShrink: 0, background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{logoSvg}</div>
           <div><div style={{ fontWeight: 800, fontSize: '1rem' }}>CodeIT</div><div style={{ color: '#475569', fontSize: '0.7rem' }}>Admin Portal</div></div>
         </div>
         {navItem('overview', 'Overview', '📊')}
         {navItem('contests', 'Contests', '🏆')}
-        {navItem('students', 'Students', '👥')}
-        {tab === 'questions' && navItem('questions', editContest ? `Questions: ${editContest.name.substring(0, 18)}…` : 'Questions', '❓')}
+        {navItem('tokens', 'Access Tokens', '🔑')}
+        {navItem('students', 'Submissions', '👥')}
+        {tab === 'questions' && navItem('questions', editContest ? `Questions: ${editContest.name.substring(0, 15)}…` : 'Questions', '❓')}
         {navItem('settings', 'Settings', '⚙️')}
         <div style={{ marginTop: 'auto' }}>
           <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 1rem', borderRadius: '10px', border: 'none', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, width: '100%' }}>🚪 Logout</button>
@@ -171,12 +276,13 @@ export default function AdminDashboard({ contests = [], setContests, submissions
           <h1 style={{ fontSize: '1.1rem', fontWeight: 700 }}>
             {tab === 'overview' && 'Dashboard Overview'}
             {tab === 'contests' && 'Contest Management'}
+            {tab === 'tokens' && 'Contest Access Tokens & Single-Use Codes'}
             {tab === 'students' && 'Student Submissions'}
             {tab === 'questions' && (editContest ? `Contest: ${editContest.name}` : 'Question Editor')}
             {tab === 'settings' && 'Platform Settings'}
           </h1>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {tab === 'contests' && <button onClick={() => setShowCreate(true)} style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>+ New Contest</button>}
+            {(tab === 'contests' || tab === 'tokens') && <button onClick={() => setShowCreate(true)} style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', borderRadius: '10px', color: '#fff', padding: '0.55rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>+ New Contest</button>}
             {tab === 'questions' && editContest && (
               <>
                 <button onClick={() => startAdd('mcq')} style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '10px', color: '#86efac', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>+ MCQ Question</button>
@@ -192,7 +298,7 @@ export default function AdminDashboard({ contests = [], setContests, submissions
           {tab === 'overview' && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-                {[['👥', 'Total Students', totalStudents, '#6366f1'], ['🔥', 'Active Contests', activeContests, '#f59e0b'], ['📝', 'Total Submissions', totalSubs, '#22c55e'], ['❓', 'Total Questions', contests.reduce((s, c) => s + (c.questions?.length || 0), 0), '#8b5cf6']].map(([ic, lbl, val, col]) => (
+                {[['👥', 'Total Students', totalStudents, '#6366f1'], ['🔥', 'Active Contests', activeContests, '#f59e0b'], ['📝', 'Total Submissions', totalSubs, '#22c55e'], ['🔑', 'Total Contests', contests.length, '#ec4899']].map(([ic, lbl, val, col]) => (
                   <div key={lbl} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.5rem' }}>
                     <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{ic}</div>
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: col }}>{val}</div>
@@ -202,16 +308,22 @@ export default function AdminDashboard({ contests = [], setContests, submissions
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '18px', padding: '1.5rem' }}>
-                <h2 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: '#94a3b8' }}>Contest List</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#94a3b8' }}>Live Contests & Access Tokens</h2>
+                  <button onClick={() => setTab('tokens')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Manage All Tokens 🔑 →</button>
+                </div>
                 {contests.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '0.6rem' }}>
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div>
                       <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.name}</span>
-                      <span style={{ color: '#64748b', fontSize: '0.78rem', marginLeft: '0.75rem' }}>{c.questions?.length || 0} questions · {c.marks} total marks · {c.students || 0} submissions</span>
+                      <span style={{ color: '#64748b', fontSize: '0.78rem', marginLeft: '0.75rem' }}>{c.questions?.length || 0} questions · {c.marks} marks · {c.students || 0} submissions</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span onClick={() => copyToClipboard(c.token || c.password, 'Token')} title="Click to copy token" style={{ cursor: 'pointer', fontFamily: 'monospace', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', borderRadius: '8px', padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                        🔑 {c.token || c.password} 📋
+                      </span>
                       <Badge text={c.status} />
-                      <button onClick={() => openQuestions(c)} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px', color: '#818cf8', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Manage Questions ❓</button>
+                      <button onClick={() => openQuestions(c)} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px', color: '#818cf8', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Questions ❓</button>
                     </div>
                   </div>
                 ))}
@@ -231,19 +343,24 @@ export default function AdminDashboard({ contests = [], setContests, submissions
                         <Badge text={c.status} />
                         <span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '20px', padding: '0.15rem 0.65rem', fontSize: '0.7rem', fontWeight: 600 }}>{c.type}</span>
                       </div>
-                      <p style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '0.5rem' }}>{c.desc || 'No description.'}</p>
-                      <div style={{ color: '#475569', fontSize: '0.78rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                      <p style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '0.6rem' }}>{c.desc || 'No description.'}</p>
+                      <div style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         <span>⏱ {c.duration} min</span>
                         <span>📊 {c.marks} marks</span>
                         <span>❓ {c.questions?.length || 0} questions</span>
                         <span>👥 {c.students || 0} submissions</span>
-                        <span>🔑 Password: <strong style={{ color: '#a5b4fc' }}>{c.password}</strong></span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(99,102,241,0.15)', padding: '0.2rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.3)' }}>
+                          <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 700 }}>🔑 Token:</span>
+                          <code style={{ color: '#fff', fontWeight: 700, fontSize: '0.8rem' }}>{c.token || c.password}</code>
+                          <button onClick={() => copyToClipboard(c.token || c.password, 'Token')} style={{ background: 'none', border: 'none', color: '#a5b4fc', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}>📋</button>
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button onClick={() => openQuestions(c)} style={{ padding: '0.5rem 0.9rem', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px', color: '#818cf8', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>❓ Questions ({c.questions?.length || 0})</button>
-                      <button onClick={() => toggleStatus(c.id)} style={{ padding: '0.5rem 0.9rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Toggle Status</button>
-                      <button onClick={() => deleteContest(c.id)} style={{ padding: '0.5rem 0.9rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Delete</button>
+                      <button onClick={() => { setTokenContestId(c.id); setTab('tokens'); }} style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', color: '#a5b4fc', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>🔑 Tokens ({(c.accessTokens || []).length})</button>
+                      <button onClick={() => openQuestions(c)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#e2e8f0', padding: '0.5rem 0.9rem', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>Questions ({c.questions?.length || 0})</button>
+                      <button onClick={() => toggleStatus(c.id)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#94a3b8', padding: '0.5rem 0.8rem', cursor: 'pointer', fontSize: '0.82rem' }}>Toggle Status</button>
+                      <button onClick={() => deleteContest(c.id)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', color: '#f87171', padding: '0.5rem 0.8rem', cursor: 'pointer', fontSize: '0.82rem' }}>Delete</button>
                     </div>
                   </div>
                 </div>
